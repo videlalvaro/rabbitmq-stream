@@ -34,11 +34,11 @@ remove_shard(XN) -> cast(XN, remove_shard).
 list_queues(XN)  -> call(XN, list_queues).
 
 start_link(Args) ->
-    io:format("start_link called: ~p~n", [Args]),
+    rabbit_log:info("start_link called: ~p~n", [Args]),
     gen_server2:start_link(?MODULE, Args, [{timeout, infinity}]).
 
 init(#exchange{name = XName} = X) ->
-    io:format("init called: ~p~n", [XName]),
+    rabbit_log:info("init called: ~p~n", [XName]),
     %% If we are starting up due to a policy change then it's possible
     %% for the exchange to have been deleted before we got here, in which
     %% case it's possible that delete callback would also have been called
@@ -109,13 +109,14 @@ handle_info(#'basic.consume_ok'{}, State) ->
     {noreply, State};
 
 handle_info({#'basic.deliver'{}, #amqp_msg{payload = Payload}}, 
-             #state{up_re = UpRe, down_re = DownRe} = State) ->
+             #state{up_re = UpRe, down_re = DownRe, exchange = XName} = State) ->
     io:format("delivery: ~p~n", [Payload]),
     ReOpts = [{capture, all_but_first, binary}],
     case re:run(Payload, UpRe, ReOpts) of
         {match, [UpNodeBin]} ->
-            io:format("node up: ~p~n", [UpNodeBin]),
-            ensure_sharded_queues(State);
+            rabbit_log:info("node up: ~p~n", [UpNodeBin]),
+            ensure_shard(XName);
+            % ensure_sharded_queues(State);
         _ -> ok
     end,
     
@@ -123,7 +124,7 @@ handle_info({#'basic.deliver'{}, #amqp_msg{payload = Payload}},
     %% on node up we will ensure that the queue exist and therefore add it to the gb_sets
     case re:run(Payload, DownRe, ReOpts) of
         {match, [DownNodeBin]} ->
-            io:format("node down: ~p~n", [DownNodeBin]),
+            rabbit_log:info("node down: ~p~n", [DownNodeBin]),
             delete_queue(DownNodeBin, State);
         _ -> ok
     end,
@@ -142,7 +143,7 @@ handle_info({'DOWN', _Ref, process, Pid, Reason},
       Pid, Reason, Ch, XName, State);
 
 handle_info(Msg, State) ->
-    io:format("got info msg: ~p~n", [Msg]),
+    rabbit_log:info("got info msg: ~p~n", [Msg]),
     {stop, {unexpected_info, Msg}, State}.
 
 terminate(_Reason, {not_started, _}) ->
@@ -227,7 +228,7 @@ ensure_sharded_queues(#state{exchange = XName} = State) ->
                 {error, Code, Text}
              end,
     R = rabbit_topic_shard_util:disposable_connection_calls(#amqp_params_direct{}, Methods, ErrFun),
-    io:format("disposable_connection_calls result: ~p~n", [R]),
+    rabbit_log:info("disposable_connection_calls result: ~p~n", [R]),
     State.
 
 exchange_name(#resource{name = XBin}) -> XBin.

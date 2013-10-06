@@ -60,11 +60,11 @@ shard(X = #exchange{type = 'x-consistent-hash'}) ->
     end;
 
 shard(X) ->
-    io:format("tried to shard exchange: ~p~n", [X]),
+    rabbit_log:info("tried to shard exchange: ~p~n", [X]),
     false.
 
 maybe_start(X = #exchange{name = XName})->
-    io:format("maybe_start: ~p~n", [XName]),
+    rabbit_log:info("maybe_start: ~p~n", [XName]),
     case shard(X) of
         true  -> 
             ok = rabbit_topic_shard_sup_sup:start_child(X),
@@ -73,7 +73,7 @@ maybe_start(X = #exchange{name = XName})->
     end.
 
 maybe_stop(X = #exchange{name = XName}) ->
-    io:format("maybe_stop: ~p~n", [XName]),
+    rabbit_log:info("maybe_stop: ~p~n", [XName]),
     case shard(X) of
         true  -> ok = rabbit_topic_shard_sup_sup:stop_child(X);
         false -> ok
