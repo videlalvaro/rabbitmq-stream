@@ -24,7 +24,7 @@
                 consumer_tag, %% logs consumer ctag
                 exchange, %% keep track here of the sharded exchange
                 sharded_queues = gb_sets:new(), %% for listing/deleting queues
-                up_re = re:compile("^rabbit on node (.*@.*) up\n\$"),
+                up_re   = re:compile("^rabbit on node (.*@.*) up\n\$"),
                 down_re = re:compile("^rabbit on node (.*@.*) down\n\$")}).
 
 go() -> cast(go).
