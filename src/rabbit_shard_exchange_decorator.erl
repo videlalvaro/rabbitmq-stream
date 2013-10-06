@@ -36,7 +36,7 @@ policy_changed(OldX, NewX) ->
     maybe_stop(OldX),
     maybe_start(NewX).
 
-add_binding(transaction, _X, _B) ->
+add_binding(_Tx, _X, _B) ->
     ok.
 
 remove_bindings(_Tx, _X, _Bs) ->
