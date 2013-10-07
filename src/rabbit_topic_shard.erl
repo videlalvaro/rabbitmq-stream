@@ -29,11 +29,9 @@ remove_shard(XN) -> cast(XN, remove_shard).
 list_queues(XN)  -> call(XN, list_queues).
 
 start_link(Args) ->
-    rabbit_log:info("start_link called: ~p~n", [Args]),
     gen_server2:start_link(?MODULE, Args, [{timeout, infinity}]).
 
 init(#exchange{name = XName} = X) ->
-    rabbit_log:info("init called: ~p~n", [XName]),
     %% If we are starting up due to a policy change then it's possible
     %% for the exchange to have been deleted before we got here, in which
     %% case it's possible that delete callback would also have been called
@@ -84,7 +82,6 @@ handle_cast(Msg, State) ->
     {stop, {unexpected_cast, Msg}, State}.
 
 handle_info(Msg, State) ->
-    rabbit_log:info("got info msg: ~p~n", [Msg]),
     {stop, {unexpected_info, Msg}, State}.
 
 terminate(_Reason, {not_started, _}) ->
@@ -143,7 +140,6 @@ ensure_sharded_queues(#state{exchange = XName} = State) ->
                 {error, Code, Text}
              end,
     R = rabbit_topic_shard_util:disposable_connection_calls(#amqp_params_direct{}, Methods, ErrFun),
-    rabbit_log:info("disposable_connection_calls result: ~p~n", [R]),
     State.
 
 exchange_name(#resource{name = XBin}) -> XBin.
