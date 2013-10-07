@@ -156,6 +156,6 @@ internal_remove_shard(State) ->
 
 a2b(A) -> list_to_binary(atom_to_list(A)).
 
-delete_queue(_DownNodeBin, _State) ->
-    %% delete queue only if _DownNodeBin to atom =:= node()
-    ok.
+% delete_queue(_DownNodeBin, _State) ->
+%     %% delete queue only if _DownNodeBin to atom =:= node()
+%     ok.
