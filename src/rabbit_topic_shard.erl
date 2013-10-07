@@ -139,7 +139,7 @@ ensure_sharded_queues(#state{exchange = XName} = State) ->
     ErrFun = fun(Code, Text) -> 
                 {error, Code, Text}
              end,
-    R = rabbit_topic_shard_util:disposable_connection_calls(#amqp_params_direct{}, Methods, ErrFun),
+    _R = rabbit_topic_shard_util:disposable_connection_calls(#amqp_params_direct{}, Methods, ErrFun),
     State.
 
 exchange_name(#resource{name = XBin}) -> XBin.
