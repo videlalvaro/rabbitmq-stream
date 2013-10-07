@@ -3,9 +3,9 @@
 -include_lib("amqp_client/include/amqp_client.hrl").
 
 %% real
--export([start_conn_ch/4, disposable_channel_call/2, disposable_channel_call/3,
+-export([disposable_channel_call/2, disposable_channel_call/3,
          disposable_connection_call/3, disposable_connection_calls/3,
-         ensure_connection_closed/1, handle_down/4]).
+         ensure_connection_closed/1]).
 
 %% temp
 -export([connection_error/5]).
@@ -13,31 +13,6 @@
 -define(MAX_CONNECTION_CLOSE_TIMEOUT, 10000).
 
 %%----------------------------------------------------------------------------
-
-start_conn_ch(Fun, Params, XName = #resource{virtual_host = _VHost}, State) ->
-    %% We trap exits so terminate/2 gets called. Note that this is not
-    %% in init() since we need to cope with the link getting restarted
-    %% during shutdown (when a broker federates with itself), which
-    %% means we hang in topic_up() and the supervisor must force
-    %% us to exit. We can therefore only trap exits when past that
-    %% point. Bug 24372 may help us do something nicer.
-    process_flag(trap_exit, true),
-    %% TODO use proper params here: case open_monitor(local_params(Upstream, VHost)) of
-    case open_monitor(Params) of
-        {ok, Conn, Ch} ->
-            try
-                Fun(Conn, Ch)
-            catch exit:E ->
-                    %% terminate/2 will not get this, as we
-                    %% have not put them in our state yet
-                    ensure_connection_closed(Conn),
-                    connection_error(local_start, E,
-                                     Params, XName, State)
-            end;
-        E ->
-            connection_error(local_start, E,
-                             Params, XName, State)
-    end.
 
 open_monitor(Params) ->
     case open(Params) of
@@ -70,11 +45,6 @@ connection_error(local_start, E, _Params, XName, State) ->
     rabbit_log:warning("Topic ~s did not connect locally~n~p~n",
                        [rabbit_misc:rs(XName), E]),
     {stop, {shutdown, restart}, State}.
-
-%%----------------------------------------------------------------------------
-
-handle_down(Ch, Reason, Ch, State) ->
-    {stop, {channel_down, Reason}, State}.
 
 %%----------------------------------------------------------------------------
 
