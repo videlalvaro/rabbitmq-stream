@@ -23,9 +23,11 @@ start_child(X) ->
            {id(X), {rabbit_topic_shard_sup, start_link, [X]},
             transient, ?MAX_WAIT, supervisor,
             [rabbit_topic_shard_sup]}) of
-        {ok, _Pid}             -> ok;
+        {ok, _Pid}                       -> ok;
+        %% we received a broadcast to start the supervisor but it was running already.
+        {error, {already_started, _Pid}} -> ok;
         %% A link returned {stop, gone}, the link_sup shut down, that's OK.
-        {error, {shutdown, _}} -> ok
+        {error, {shutdown, _}}           -> ok
     end.
 
 %% this get called from the exchange deletion
