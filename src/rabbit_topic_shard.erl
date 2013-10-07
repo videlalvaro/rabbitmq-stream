@@ -43,7 +43,7 @@ init(#exchange{name = XName} = X) ->
             % UParams = rabbit_federation_upstream:to_params(Upstream, X),
             Params = #amqp_params_direct{},
             join(rabbit_topic_shards),
-            join({rabbit_topic_shards, XName}),
+            join({rabbit_topic_shard, XName}),
             gen_server2:cast(self(), maybe_go),
             {ok, {not_started, {Params, XName}}};
         {error, not_found} ->
