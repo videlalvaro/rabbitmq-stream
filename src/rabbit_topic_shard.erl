@@ -5,7 +5,7 @@
 %% -include_lib("kernel/include/inet.hrl").
 -include_lib("amqp_client/include/amqp_client.hrl").
 
--export([go/0, ensure_shard/1, remove_shard/1, list_queues/1]).
+-export([go/0]).
 
 -export([start_link/1]).
 
@@ -18,15 +18,10 @@
 -define(LOGS_PREFETCH, 10).
 
 -record(state, {params, %% params used to setup the connection
-                exchange, %% keep track here of the sharded exchange
-                sharded_queues = gb_sets:new() %% for listing/deleting queues
+                exchange %% keep track here of the sharded exchange
                 }).
 
 go() -> cast(go).
-
-ensure_shard(XN) -> cast(XN, ensure_shard). %% TODO maybe not needed.
-remove_shard(XN) -> cast(XN, remove_shard).
-list_queues(XN)  -> call(XN, list_queues).
 
 start_link(Args) ->
     gen_server2:start_link(?MODULE, Args, [{timeout, infinity}]).
@@ -48,9 +43,6 @@ init(#exchange{name = XName} = X) ->
             {stop, gone}
     end.
 
-handle_call(list_queues, _From, State = #state{sharded_queues = Qs}) ->
-    {reply, gb_sets:to_list(Qs), State};
-
 handle_call(Msg, _From, State) ->
     {stop, {unexpected_call, Msg}, State}.
 
@@ -68,12 +60,6 @@ handle_cast(go, S0 = {not_started, _Args}) ->
 %% before 'go' gets invoked. Ignore.
 handle_cast(go, State) ->
     {noreply, State};
-
-handle_cast(ensure_shard, State) ->
-    {noreply, ensure_sharded_queues(State)};
-    
-handle_cast(remove_shard, #state{exchange = XName} = State) ->
-    {stop, {shard_removed, XName}, internal_remove_shard(State)};
 
 handle_cast(_Msg, State = {not_started, _}) ->
     {noreply, State};
@@ -93,10 +79,7 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-
-call(XName, Msg) -> [gen_server2:call(Pid, Msg, infinity) || Pid <- x(XName)].
 cast(Msg)        -> [gen_server2:cast(Pid, Msg) || Pid <- all()].
-cast(XName, Msg) -> [gen_server2:cast(Pid, Msg) || Pid <- x(XName)].
 
 join(Name) ->
     pg2_fixed:create(Name),
@@ -105,10 +88,6 @@ join(Name) ->
 all() ->
     pg2_fixed:create(rabbit_topic_shards),
     pg2_fixed:get_members(rabbit_topic_shards).
-
-x(XName) ->
-    pg2_fixed:create({rabbit_topic_shard, XName}),
-    pg2_fixed:get_members({rabbit_topic_shard, XName}).
 
 %%----------------------------------------------------------------------------
 
@@ -141,17 +120,3 @@ ensure_sharded_queues(#state{exchange = XName} = State) ->
              end,
     _R = rabbit_topic_shard_util:disposable_connection_calls(#amqp_params_direct{}, Methods, ErrFun),
     State.
-
-exchange_name(#resource{name = XBin}) -> XBin.
-
-queue_name(XName, NodeBin) ->
-    <<"topic: ", XName/binary, " - ", NodeBin/binary>>.
-
-internal_remove_shard(State) ->
-    State.
-
-a2b(A) -> list_to_binary(atom_to_list(A)).
-
-% delete_queue(_DownNodeBin, _State) ->
-%     %% delete queue only if _DownNodeBin to atom =:= node()
-%     ok.
