@@ -20,7 +20,7 @@
 description() ->
     [{description, <<"Shard exchange decorator">>}].
 
-serialise_events(X) -> false.
+serialise_events(_X) -> false.
 
 create(transaction, _X) ->
     ok;
@@ -55,7 +55,7 @@ active_for(X) ->
 shard(X) ->
     rabbit_topic_util:shard(X).
 
-maybe_start(X = #exchange{name = XName})->
+maybe_start(X)->
     case shard(X) of
         true  -> 
             rabbit_topic_util:rpc_call(X, start_child),
@@ -63,7 +63,7 @@ maybe_start(X = #exchange{name = XName})->
         false -> ok
     end.
 
-maybe_stop(X = #exchange{name = XName}) ->
+maybe_stop(X) ->
     case shard(X) of
         true  -> 
             rabbit_topic_util:rpc_call(X, stop_child),
