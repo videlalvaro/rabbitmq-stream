@@ -18,14 +18,9 @@
 -define(LOGS_PREFETCH, 10).
 
 -record(state, {params, %% params used to setup the connection
-                connection, %% logs consumer connection
-                channel, %% logs consumer channel
-                logs_queue, %% used to receive node up/down eventss
-                consumer_tag, %% logs consumer ctag
                 exchange, %% keep track here of the sharded exchange
-                sharded_queues = gb_sets:new(), %% for listing/deleting queues
-                up_re   = re:compile("^rabbit on node (.*@.*) up\n\$"),
-                down_re = re:compile("^rabbit on node (.*@.*) down\n\$")}).
+                sharded_queues = gb_sets:new() %% for listing/deleting queues
+                }).
 
 go() -> cast(go).
 
@@ -54,23 +49,6 @@ init(#exchange{name = XName} = X) ->
         {error, not_found} ->
             {stop, gone}
     end.
-
-% init([]) ->
-%     mnesia:subscribe(system), %% TODO: maybe we don't need this
-%     {ok, UpRe} = re:compile("^rabbit on node (.*@.*) up\n\$"),
-%     {ok, DownRe} = re:compile("^rabbit on node (.*@.*) down\n\$"),
-%     {ok, Connection} = amqp_connection:start(#amqp_params_direct{}),
-%     {ok, Channel} = amqp_connection:open_channel(
-%                         Connection, {amqp_direct_consumer, [self()]}),
-%     InitialState = #state{connection  = Connection,
-%                           channel     = Channel,
-%                           exchange    = <<"amq.rabbitmq.log">>,
-%                           routing_key = <<"info">>,
-%                           up_re       = UpRe,
-%                           down_re     = DownRe},
-%     State = setup_events_queue(InitialState),
-%     setup_consumer(State),
-%     {ok, State}.
 
 handle_call(list_queues, _From, State = #state{sharded_queues = Qs}) ->
     {reply, gb_sets:to_list(Qs), State};
@@ -105,43 +83,6 @@ handle_cast(_Msg, State = {not_started, _}) ->
 handle_cast(Msg, State) ->
     {stop, {unexpected_cast, Msg}, State}.
 
-handle_info(#'basic.consume_ok'{}, State) ->
-    {noreply, State};
-
-handle_info({#'basic.deliver'{}, #amqp_msg{payload = Payload}}, 
-             #state{up_re = UpRe, down_re = DownRe, exchange = XName} = State) ->
-    io:format("delivery: ~p~n", [Payload]),
-    ReOpts = [{capture, all_but_first, binary}],
-    case re:run(Payload, UpRe, ReOpts) of
-        {match, [UpNodeBin]} ->
-            rabbit_log:info("node up: ~p~n", [UpNodeBin]),
-            ensure_shard(XName);
-            % ensure_sharded_queues(State);
-        _ -> ok
-    end,
-    
-    %% TODO: check for node down and remove the queue from the gb_sets
-    %% on node up we will ensure that the queue exist and therefore add it to the gb_sets
-    case re:run(Payload, DownRe, ReOpts) of
-        {match, [DownNodeBin]} ->
-            rabbit_log:info("node down: ~p~n", [DownNodeBin]),
-            delete_queue(DownNodeBin, State);
-        _ -> ok
-    end,
-    
-    {noreply, State};
-
-handle_info(#'basic.cancel'{}, State = #state{params   = Params,
-                                              exchange = XName}) ->
-    rabbit_topic_shard_util:connection_error(
-      local, basic_cancel, Params, XName, State);
-
-handle_info({'DOWN', _Ref, process, Pid, Reason},
-            State = #state{channel  = Ch,
-                           exchange = XName}) ->
-    rabbit_topic_shard_util:handle_down(
-      Pid, Reason, Ch, XName, State);
-
 handle_info(Msg, State) ->
     rabbit_log:info("got info msg: ~p~n", [Msg]),
     {stop, {unexpected_info, Msg}, State}.
@@ -149,8 +90,7 @@ handle_info(Msg, State) ->
 terminate(_Reason, {not_started, _}) ->
     ok;
 
-terminate(_Reason, #state{connection = Conn}) ->
-    rabbit_topic_shard_util:ensure_connection_closed(Conn),
+terminate(_Reason, _State) ->
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -180,37 +120,11 @@ topic_up() -> is_pid(whereis(rabbit_topic_app)).
 %% -------------------------------------------------------------------------------------
 
 %% TODO: Params so far are dummy #amqp_params_direct{}
-go(S0 = {not_started, {Params, XName}}) ->
-    %% We trap exits so terminate/2 gets called. Note that this is not
-    %% in init() since we need to cope with the link getting restarted
-    %% during shutdown (when a broker federates with itself), which
-    %% means we hang in topic_up() and the supervisor must force
-    %% us to exit. We can therefore only trap exits when past that
-    %% point. Bug 24372 may help us do something nicer.
-    process_flag(trap_exit, true),
-    rabbit_topic_shard_util:start_conn_ch(
-      fun (Conn, Ch) ->
-              State = ensure_sharded_queues(
-                        setup_logs_consumer(
-                          #state{params     = Params,
-                                 connection = Conn,
-                                 channel    = Ch,
-                                 exchange   = XName})),
-              {noreply, State}
-      end, Params, XName, S0).
-
-setup_logs_consumer(State = #state{channel = Channel}) ->
-    #'queue.declare_ok'{queue = Q} =
-        amqp_channel:call(Channel, #'queue.declare'{}),
-    #'queue.bind_ok'{} = 
-        amqp_channel:call(Channel, #'queue.bind'{queue       = Q,
-                                                 exchange    = ?LOGS_EXCHANGE,
-                                                 routing_key = ?LOGS_RKEY}),
-    amqp_channel:call(Channel, #'basic.qos'{prefetch_count = ?LOGS_PREFETCH}),
-    #'basic.consume_ok'{consumer_tag = CTag} =
-        amqp_channel:subscribe(Channel, #'basic.consume'{queue = Q, 
-                                                         no_ack = true}, self()),
-    State#state{logs_queue = Q, consumer_tag = CTag}.
+go({not_started, {Params, XName}}) ->
+    State = ensure_sharded_queues(
+                #state{params     = Params,
+                       exchange   = XName}),
+    {noreply, State}.
 
 ensure_sharded_queues(#state{exchange = XName} = State) ->
     %% queue needs to be started in the respective node.
