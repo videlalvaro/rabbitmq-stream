@@ -14,13 +14,6 @@
 
 %%----------------------------------------------------------------------------
 
-open_monitor(Params) ->
-    case open(Params) of
-        {ok, Conn, Ch} -> erlang:monitor(process, Ch),
-                          {ok, Conn, Ch};
-        E              -> E
-    end.
-
 open(Params) ->
     case amqp_connection:start(Params) of
         {ok, Conn} -> case amqp_connection:open_channel(Conn) of
