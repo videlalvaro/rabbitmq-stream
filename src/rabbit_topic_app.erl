@@ -3,8 +3,6 @@
 -behaviour(application).
 -export([start/2, stop/1]).
 
--export([maybe_shard_exchanges/0]).
-
 %% Dummy supervisor - see Ulf Wiger's comment at
 %% http://erlang.2086793.n4.nabble.com/initializing-library-applications-without-processes-td2094473.html
 
@@ -21,13 +19,7 @@
 -behaviour(supervisor).
 -export([init/1]).
 
--rabbit_boot_step({rabbit_topic_maybe_share,
-                   [{description, "rabbit topic maybe shard"},
-                    {mfa,         {?MODULE, maybe_shard_exchanges, []}},
-                    {requires,    recovery}]}).
-
 start(_Type, _StartArgs) ->
-    rabbit_log:info("starting rabbit_topic_app on node ~p~n", [node()]),
     rabbit_topic_shard:go(),
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
@@ -36,7 +28,3 @@ stop(_State) ->
 %%----------------------------------------------------------------------------
 
 init([]) -> {ok, {{one_for_one, 3, 10}, []}}.
-
-maybe_shard_exchanges() ->
-    rabbit_topic_util:maybe_shard_exchanges(<<"/">>),
-    ok.
