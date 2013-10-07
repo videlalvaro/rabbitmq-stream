@@ -133,7 +133,8 @@ ensure_sharded_queues(#state{exchange = XName} = State) ->
     %% and can declare the queue locally
     Node = node(),
     Methods = [
-        #'queue.declare'{queue = queue_name(exchange_name(XName), a2b(Node))},
+        #'queue.declare'{queue = queue_name(exchange_name(XName), a2b(Node)),
+                         durable = true},
         #'queue.bind'{exchange = exchange_name(XName), 
                       queue = queue_name(exchange_name(XName), a2b(Node)), 
                       routing_key = <<"1000">>}
