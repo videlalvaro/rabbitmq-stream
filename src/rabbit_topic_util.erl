@@ -1,6 +1,8 @@
 -module(rabbit_topic_util).
 
--export([shard/1, maybe_shard_exchanges/0, rpc_call/2]).
+-export([shard/1, maybe_shard_exchanges/0, rpc_call/2, list_queues/1]).
+
+-export([exchange_name/1, make_queue_name/2]).
 
 -include_lib("amqp_client/include/amqp_client.hrl").
 
@@ -8,16 +10,22 @@
                    [{description, "rabbit topic maybe shard"},
                     {mfa,         {?MODULE, maybe_shard_exchanges, []}},
                     {requires,    recovery}]}).
+
+%% only shard CH or random exchanges.
+shard(X = #exchange{type = 'x-random'}) ->
+    shard0(X);
     
-%% only shard consistent hash exchanges.
 shard(X = #exchange{type = 'x-consistent-hash'}) ->
-    case rabbit_policy:get(<<"topic">>, X) of
-        undefined -> false;
-        _         -> true
-    end;
+    shard0(X);
 
 shard(_X) ->
     false.
+
+shard0(X) ->
+    case rabbit_policy:get(<<"topic">>, X) of
+        undefined -> false;
+        _         -> true
+    end.
 
 maybe_shard_exchanges() ->
     io:format("maybe_shard_exchanges called"),
@@ -32,7 +40,22 @@ rpc_call(X, Fun) ->
     [rpc:call(Node, rabbit_topic_shard_sup_sup, Fun, [X]) || 
         Node <- rabbit_mnesia:cluster_nodes(running)].
 
+list_queues(Exchange) ->
+    Nodes = rabbit_mnesia:cluster_nodes(running),
+    Qs = [make_queue_name(Exchange, a2b(N)) || N <- Nodes],
+    Qs.
+
+exchange_name(#resource{name = XBin}) -> XBin.
+
+make_queue_name(#resource{kind = exchange, name = XBin}, Node) when is_atom(Node) ->
+    make_queue_name(XBin, a2b(Node));
+    
+make_queue_name(XName, Node) when is_binary (XName), is_binary(Node) ->
+    <<"topic: ", XName/binary, " - ", Node/binary>>.
+
 %%----------------------------------------------------------------------------
 
 find_exchanges(VHost) ->
         rabbit_exchange:list(VHost).
+
+a2b(A) -> list_to_binary(atom_to_list(A)).

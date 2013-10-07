@@ -109,10 +109,10 @@ ensure_sharded_queues(#state{exchange = XName} = State) ->
     %% and can declare the queue locally
     Node = node(),
     Methods = [
-        #'queue.declare'{queue = queue_name(exchange_name(XName), a2b(Node)),
+        #'queue.declare'{queue = rabbit_topic_util:make_queue_name(XName, Node),
                          durable = true},
-        #'queue.bind'{exchange = exchange_name(XName), 
-                      queue = queue_name(exchange_name(XName), a2b(Node)), 
+        #'queue.bind'{exchange = rabbit_topic_util:exchange_name(XName), 
+                      queue = rabbit_topic_util:make_queue_name(XName, Node), 
                       routing_key = <<"1000">>}
     ],
     ErrFun = fun(Code, Text) -> 
