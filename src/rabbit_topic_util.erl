@@ -1,7 +1,7 @@
 -module(rabbit_topic_util).
 
--export([shard/1, maybe_shard_exchanges/0, rpc_call/2, list_queues/1]).
-
+-export([shard/1, maybe_shard_exchanges/0, rpc_call/2]).
+-export([queue_for_node/3, list_queues/2, list_queues_on_vhost/1]).
 -export([exchange_name/1, make_queue_name/2]).
 
 -include_lib("amqp_client/include/amqp_client.hrl").
@@ -40,10 +40,21 @@ rpc_call(X, Fun) ->
     [rpc:call(Node, rabbit_topic_shard_sup_sup, Fun, [X]) || 
         Node <- rabbit_mnesia:cluster_nodes(running)].
 
-list_queues(Exchange) ->
+queue_for_node(Exchange, Vhost, Node) ->
+    Q = make_queue_name(Exchange, a2b(Node)),
+    case is_queue_alive(Q, Vhost) of
+        true -> {ok, Q};
+        false -> {error, not_alive}
+    end.
+
+list_queues(Exchange, Vhost) ->
     Nodes = rabbit_mnesia:cluster_nodes(running),
     Qs = [make_queue_name(Exchange, a2b(N)) || N <- Nodes],
-    Qs.
+    lists:filter(fun (Q) -> is_queue_alive(Q, Vhost) end, Qs).
+    
+list_queues_on_vhost(Vhost) ->    
+    [list_queues(exchange_name(XName), Vhost) || 
+        #'exchange'{name = XName} = X <- find_exchanges(Vhost), shard(X)].
 
 exchange_name(#resource{name = XBin}) -> XBin.
 
@@ -56,6 +67,13 @@ make_queue_name(XName, Node) when is_binary (XName), is_binary(Node) ->
 %%----------------------------------------------------------------------------
 
 find_exchanges(VHost) ->
-        rabbit_exchange:list(VHost).
+    rabbit_exchange:list(VHost).
 
 a2b(A) -> list_to_binary(atom_to_list(A)).
+
+is_queue_alive(QBin, Vhost) ->
+    R = rabbit_misc:r(Vhost, queue, QBin),
+    case rabbit_amqqueue:lookup(R) of
+        {error,not_found} -> false;
+        {ok, _Q}          -> true
+    end.
