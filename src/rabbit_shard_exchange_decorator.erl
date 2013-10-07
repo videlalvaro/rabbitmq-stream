@@ -52,29 +52,21 @@ active_for(X) ->
 
 %%----------------------------------------------------------------------------
 
-%% only shard consistent hash exchanges.
-shard(X = #exchange{type = 'x-consistent-hash'}) ->
-    case rabbit_policy:get(<<"topic">>, X) of
-        undefined -> false;
-        _         -> true
-    end;
-
 shard(X) ->
-    rabbit_log:info("tried to shard exchange: ~p~n", [X]),
-    false.
+    rabbit_topic_util:shard(X).
 
 maybe_start(X = #exchange{name = XName})->
-    rabbit_log:info("maybe_start: ~p~n", [XName]),
     case shard(X) of
         true  -> 
-            ok = rabbit_topic_shard_sup_sup:start_child(X),
+            rabbit_topic_util:rpc_call(X, start_child),
             ok;
         false -> ok
     end.
 
 maybe_stop(X = #exchange{name = XName}) ->
-    rabbit_log:info("maybe_stop: ~p~n", [XName]),
     case shard(X) of
-        true  -> ok = rabbit_topic_shard_sup_sup:stop_child(X);
+        true  -> 
+            rabbit_topic_util:rpc_call(X, stop_child),
+            ok;
         false -> ok
     end.
