@@ -29,8 +29,8 @@ start_link() ->
 %%----------------------------------------------------------------------------
 
 init([]) ->
-    XTopicSupSup = {x_topics,
+    TopicShardSupSup = {topic_shard_sup_sup,
                    {rabbit_topic_shard_sup_sup, start_link, []},
                    transient, ?MAX_WAIT, supervisor,
                    [rabbit_topic_shard_sup_sup]},
-    {ok, {{one_for_one, 3, 10}, [XTopicSupSup]}}.
+    {ok, {{one_for_one, 3, 10}, [TopicShardSupSup]}}.
