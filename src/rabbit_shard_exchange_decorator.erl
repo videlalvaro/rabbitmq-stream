@@ -20,7 +20,7 @@
 description() ->
     [{description, <<"Shard exchange decorator">>}].
 
-serialise_events(X) -> shard(X).
+serialise_events(X) -> false.
 
 create(transaction, _X) ->
     ok;
