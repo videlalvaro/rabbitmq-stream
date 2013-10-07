@@ -15,7 +15,14 @@ start_link(X) ->
 %%----------------------------------------------------------------------------
 
 init(X) ->
-    Shard = {X, {rabbit_topic_shard, start_link, [X]},
+    Shard = {name(X), {rabbit_topic_shard, start_link, [X]},
             {permanent, 1}, ?MAX_WAIT, worker,
             [rabbit_topic_shard]},
+    rabbit_log:info("starting shard: ~p on node ~p~n", [Shard, node()]),
     {ok, {{one_for_one, 1, 1}, [Shard]}}.
+
+name(#exchange{name = #resource{name = XBin}}) -> 
+    NodeBin = a2b(node()),
+    <<"topic: ", XBin/binary, " - ", NodeBin/binary>>.
+
+a2b(A) -> list_to_binary(atom_to_list(A)).
