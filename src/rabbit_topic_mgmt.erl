@@ -13,7 +13,7 @@
 
 dispatcher() -> [{["topic-queues"],                  ?MODULE, []},
                  {["topic-queues", vhost],           ?MODULE, []},
-                 {["topic-queues", vhost, exchange], ?MODULE, []].
+                 {["topic-queues", vhost, exchange], ?MODULE, []}].
 web_ui()     -> [{javascript, <<"topic.js">>}]. %% No UI for now.
 
 %%--------------------------------------------------------------------
@@ -24,9 +24,9 @@ content_types_provided(ReqData, Context) ->
    {[{"application/json", to_json}], ReqData, Context}.
 
 resource_exists(ReqData, Context) ->
-    {case queues0(ReqData) of
-         vhost_not_found -> false;
-         _               -> true
+    {case exchange(ReqData) of
+         not_found -> false;
+         _         -> true
      end, ReqData, Context}.
 
 to_json(ReqData, Context) ->
@@ -38,9 +38,16 @@ is_authorized(ReqData, Context) ->
 %%--------------------------------------------------------------------
 
 queues0(ReqData) ->
-    rabbit_mgmt_util:all_or_one_vhost(ReqData, fun rabbit_topic_util:list_queues_on_vhost/1).
-        
-        
+    case rabbit_mgmt_util:vhost(ReqData) of
+        not_found -> [];
+        VHost     -> 
+            case exchange(ReqData) of
+                {error, not_found} -> [];
+                Exchange -> rabbit_topic_util:list_queues(Exchange, VHost)
+            end
+    end.
+    % rabbit_mgmt_util:all_or_one_vhost(ReqData, fun rabbit_topic_util:list_queues_on_vhost/1).
+
 exchange(ReqData) ->
     case rabbit_mgmt_util:vhost(ReqData) of
         not_found -> not_found;
@@ -50,8 +57,7 @@ exchange(ReqData) ->
 exchange(VHost, XName) ->
     Name = rabbit_misc:r(VHost, exchange, XName),
     case rabbit_exchange:lookup(Name) of
-        {ok, X}            -> rabbit_mgmt_format:exchange(
-                                rabbit_exchange:info(X));
+        {ok, _X}            -> Name;
         {error, not_found} -> not_found
     end.
 
