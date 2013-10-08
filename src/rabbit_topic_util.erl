@@ -67,8 +67,8 @@ list_queues0(Exchange) ->
 
 exchange_name(#resource{name = XBin}) -> XBin.
 
-make_queue_name(#resource{kind = exchange, name = XBin}, Node) when is_atom(Node) ->
-    make_queue_name(XBin, a2b(Node));
+make_queue_name(#resource{kind = exchange, name = XBin}, Node) ->
+    make_queue_name(XBin, Node);
     
 make_queue_name(XName, Node) when is_binary (XName), is_binary(Node) ->
     <<"topic: ", XName/binary, " - ", Node/binary>>.

@@ -109,10 +109,10 @@ ensure_sharded_queues(#state{exchange = XName} = State) ->
     %% and can declare the queue locally
     Node = node(),
     Methods = [
-        #'queue.declare'{queue = rabbit_topic_util:make_queue_name(XName, Node),
+        #'queue.declare'{queue = rabbit_topic_util:make_queue_name(XName, a2b(Node)),
                          durable = true},
         #'queue.bind'{exchange = rabbit_topic_util:exchange_name(XName), 
-                      queue = rabbit_topic_util:make_queue_name(XName, Node), 
+                      queue = rabbit_topic_util:make_queue_name(XName, a2b(Node)), 
                       routing_key = <<"1000">>}
     ],
     ErrFun = fun(Code, Text) -> 
@@ -120,3 +120,5 @@ ensure_sharded_queues(#state{exchange = XName} = State) ->
              end,
     _R = rabbit_topic_shard_util:disposable_connection_calls(#amqp_params_direct{}, Methods, ErrFun),
     State.
+    
+a2b(A) -> list_to_binary(atom_to_list(A)).
