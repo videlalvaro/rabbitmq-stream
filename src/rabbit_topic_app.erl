@@ -20,7 +20,7 @@
 -export([init/1]).
 
 start(_Type, _StartArgs) ->
-    rabbit_topic_shard:go(),
+    % rabbit_topic_shard:go(),
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 stop(_State) ->

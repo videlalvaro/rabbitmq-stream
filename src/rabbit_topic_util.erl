@@ -1,15 +1,10 @@
 -module(rabbit_topic_util).
 
--export([shard/1, maybe_shard_exchanges/0, rpc_call/2]).
+-export([shard/1, rpc_call/2, find_exchanges/1]).
 -export([queue_for_node/3, list_queues/2, list_queues_on_vhost/1]).
 -export([exchange_name/1, make_queue_name/2]).
 
 -include_lib("amqp_client/include/amqp_client.hrl").
-
--rabbit_boot_step({rabbit_topic_maybe_shard,
-                   [{description, "rabbit topic maybe shard"},
-                    {mfa,         {?MODULE, maybe_shard_exchanges, []}},
-                    {requires,    recovery}]}).
 
 %% only shard CH or random exchanges.
 shard(X = #exchange{type = 'x-random'}) ->
@@ -27,16 +22,8 @@ shard0(X) ->
         _         -> true
     end.
 
-maybe_shard_exchanges() ->
-    %% TODO: get an actual vhost.
-    maybe_shard_exchanges(<<"/">>),
-    ok.
-
-maybe_shard_exchanges(VHost) ->
-    [rpc_call(X, start_child) || X <- find_exchanges(VHost), shard(X)].
-
-rpc_call(X, Fun) ->
-    [rpc:call(Node, rabbit_topic_shard_sup_sup, Fun, [X]) || 
+rpc_call(X, _Fun) ->
+    [rpc:call(Node, rabbit_topic_shard2, ensure_sharded_queues, [X]) || 
         Node <- rabbit_mnesia:cluster_nodes(running)].
 
 queue_for_node(Exchange, Vhost, Node) ->

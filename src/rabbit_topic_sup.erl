@@ -15,11 +15,11 @@
 %% a) it needs to be in place when exchange recovery takes place
 %% b) it needs to go up and down with rabbit
 
--rabbit_boot_step({rabbit_topic_supervisor,
-                   [{description, "rabbit topic shards"},
-                    {mfa,         {rabbit_sup, start_child, [?MODULE]}},
-                    {requires,    kernel_ready},
-                    {enables,     rabbit_shard_exchange_decorator}]}).
+% -rabbit_boot_step({rabbit_topic_supervisor,
+%                    [{description, "rabbit topic shards"},
+%                     {mfa,         {rabbit_sup, start_child, [?MODULE]}},
+%                     {requires,    kernel_ready},
+%                     {enables,     rabbit_shard_exchange_decorator}]}).
 
 %%----------------------------------------------------------------------------
 
