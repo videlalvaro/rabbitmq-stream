@@ -33,7 +33,7 @@ queues0(ReqData) ->
         VHost     -> 
             case exchange(ReqData) of
                 {error, not_found} -> [];
-                Exchange -> rabbit_topic_util:list_queues(Exchange, VHost)
+                Exchange           -> maybe_filter(ReqData, Exchange, VHost)
             end
     end.
 
@@ -47,8 +47,29 @@ exchange(VHost, XName) ->
     Name = rabbit_misc:r(VHost, exchange, XName),
     case rabbit_exchange:lookup(Name) of
         {ok, _X}            -> Name;
-        {error, not_found} -> not_found
+        {error, not_found}  -> not_found
     end.
 
 id(ReqData) ->
     rabbit_mgmt_util:id(exchange, ReqData).
+
+maybe_filter(ReqData, Exchange, VHost) ->
+    case wrq:get_qs_value("node", ReqData) of
+        "local"  -> 
+            case rabbit_topic_util:queue_for_node(Exchange, VHost, node()) of
+                {ok, Q} -> [Q];
+                _       -> []
+            end;
+        "random" -> 
+            random_queue(rabbit_topic_util:list_queues(Exchange, VHost));
+        _ -> 
+            rabbit_topic_util:list_queues(Exchange, VHost)
+    end.
+    
+random_queue(Qs) ->
+    case length(Qs) of
+      Len when Len < 2 -> Qs;
+      Len ->
+        Rand = crypto:rand_uniform(1, Len + 1),
+        [lists:nth(Rand, Qs)]
+    end.
