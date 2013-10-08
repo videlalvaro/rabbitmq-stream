@@ -1,4 +1,4 @@
--module(rabbit_topic_shard2).
+-module(rabbit_topic_shard).
 
 -include_lib("amqp_client/include/amqp_client.hrl").
 

@@ -23,7 +23,7 @@ shard0(X) ->
     end.
 
 rpc_call(X) ->
-    [rpc:call(Node, rabbit_topic_shard2, ensure_sharded_queues, [X]) || 
+    [rpc:call(Node, rabbit_topic_shard, ensure_sharded_queues, [X]) || 
         Node <- rabbit_mnesia:cluster_nodes(running)].
 
 queue_for_node(Exchange, Vhost, Node) ->
