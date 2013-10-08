@@ -11,6 +11,9 @@ Why do we need this? RabbitMQ queues are bound to the node where they were first
 of RabbitMQ brokers, at some point all message traffic will go to the node where the queue lives. What this plugin does is to give you
 a centralized place where to send your messages, plus __load balancing__ across many nodes, by adding queues to the other nodes in the cluster.
 
+The advantage of this setup is that the queues from where your consumers will get messages will be local to the node where they are connected.
+On the other hand, the producers don't need to care about what's behind the exchange.
+
 All the plumbing to __automatically maintain__ the stream queues is done by the plugin. If you add more nodes to the cluster, then the plugin
 will __automatically create queues in those nodes__.
 
@@ -122,5 +125,5 @@ That script will:
 
 ## TODO ##
 
-Adds parameters so the user can define an __amqpuri__ to use when declaring queues.
-Adds parameters to set the binding key for queues.
+- Adds parameters so the user can define an __amqpuri__ to use when declaring queues.
+- Adds parameters to set the binding key for queues.
