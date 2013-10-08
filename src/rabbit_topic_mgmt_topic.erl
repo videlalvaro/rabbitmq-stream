@@ -1,18 +1,10 @@
--module(rabbit_topic_mgmt).
+-module(rabbit_topic_mgmt_topic).
 
--behaviour(rabbit_mgmt_extension).
-
--export([dispatcher/0, web_ui/0]).
 -export([init/1, to_json/2, resource_exists/2, content_types_provided/2,
          is_authorized/2]).
 
--import(rabbit_misc, [pget/2]).
-
 -include_lib("rabbitmq_management/include/rabbit_mgmt.hrl").
 -include_lib("webmachine/include/webmachine.hrl").
-
-dispatcher() -> [{["topic-queues", vhost, exchange], ?MODULE, []}].
-web_ui()     -> [{javascript, <<"topic.js">>}]. %% No UI for now.
 
 %%--------------------------------------------------------------------
 
@@ -44,7 +36,6 @@ queues0(ReqData) ->
                 Exchange -> rabbit_topic_util:list_queues(Exchange, VHost)
             end
     end.
-    % rabbit_mgmt_util:all_or_one_vhost(ReqData, fun rabbit_topic_util:list_queues_on_vhost/1).
 
 exchange(ReqData) ->
     case rabbit_mgmt_util:vhost(ReqData) of

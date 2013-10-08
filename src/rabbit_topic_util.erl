@@ -28,13 +28,12 @@ shard0(X) ->
     end.
 
 maybe_shard_exchanges() ->
-    io:format("maybe_shard_exchanges called"),
+    %% TODO: get an actual vhost.
     maybe_shard_exchanges(<<"/">>),
     ok.
 
 maybe_shard_exchanges(VHost) ->
-    R = [rpc_call(X, start_child) || X <- find_exchanges(VHost), shard(X)],
-    io:format("maybe_shard_exchanges: ~p~n",[R]).
+    [rpc_call(X, start_child) || X <- find_exchanges(VHost), shard(X)].
 
 rpc_call(X, Fun) ->
     [rpc:call(Node, rabbit_topic_shard_sup_sup, Fun, [X]) || 
