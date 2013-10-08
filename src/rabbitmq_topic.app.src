@@ -1,7 +1,0 @@
-{application, rabbitmq_stream,
- [{description, "RabbitMQ Stream Management"},
-  {vsn, "0.1.0"},
-  {modules, []},
-  {registered, []},
-  {mod, {rabbit_stream_app, []}},
-  {applications, [kernel, stdlib, rabbit, amqp_client]}]}.
