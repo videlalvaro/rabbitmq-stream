@@ -2,25 +2,25 @@
 
 This plugin adds the concept of stream exchanges. The idea is that when you define a policy that makes an exchange a _stream_
 the plugin will create one queue per node in the cluster. Messages published to the exchange will be delivered to the queues
-either by consistent hashing or by a random algorithm (The plugin augments the _consistent-hash-exchange_ and the `random-exchange`
+either by __consistent hashing__ or by a __random algorithm__ (The plugin augments the `consistent-hash-exchange` and the `random-exchange`
 plugins).
 
 ## Why? ##
 
 Why do we need this? RabbitMQ queues are bound to the node where they were first declared. This means that even if you create a cluster
 of RabbitMQ brokers, at some point all message traffic will go to the node where the queue lives. What this plugin does is to give you
-a centralized place where to send your messages, plus load balancing across many nodes, by adding queues to the other nodes in the cluster.
+a centralized place where to send your messages, plus __load balancing__ across many nodes, by adding queues to the other nodes in the cluster.
 
 All the plumbing to __automatically maintain__ the stream queues is done by the plugin. If you add more nodes to the cluster, then the plugin
 will __automatically create queues in those nodes__.
 
-If you remove nodes from the cluster then RabbitMQ will take care of taking them out of the list of bound queues. Message loss can occur in the case 
+If you remove nodes from the cluster then RabbitMQ will take care of taking them out of the list of bound queues. Message loss can happen in the case 
 where a race occurs from a node going away and your message arriving to the stream exchange. If you can't afford to lose a message then you can use
 [publisher confirms](http://www.rabbitmq.com/confirms.html) to prevent message loss.
 
-## How to get the queue name  to consume from? ##
+## How to get the queue name to consume from? ##
 
-With all these queues automatically added to the broker it can get tricky to know from which your consumer should get messages. The plugin adds a couple
+With all these queues automatically added to the broker it can get tricky to know from which queue your consumer should get messages. The plugin adds a couple
 of HTTP endpoints to help with that. See bellow.
 
 ## Ordering ##
@@ -36,7 +36,8 @@ Move to the umbrella folder an then run the following commands:
 ```bash
 # the plugin allows routing via the random-exchange plugin
 git clone https://github.com/videlalvaro/random-exchange.git
-git clone bitbucket repo path
+git clone https://github.com/rabbitmq/rabbitmq-consistent-hash-exchange.git
+git clone https://videlalvaro@bitbucket.org/videlalvaro/rabbitmq-stream.git
 cd rabbitmq-stream
 make
 ```
@@ -66,10 +67,9 @@ make start-other-node OTHER_NODE=rabbit2 OTHER_PORT=5673
 make cluster-other-node MAIN_NODE=rabbit-test@hostname OTHER_NODE=rabbit2
 ```
 
-You could repeat the previous two steps to start a couple more nodes. Don't forget to change the `node name` and `port`.
+You could repeat the previous two steps to start a couple more nodes. Don't forget to change the `OTHER_NODE` and `OTHER_PORT` values.
 
 So far we have a RabbitMQ cluster. Now it's time to add a policy to tell RabbitMQ to make some exchanges as streams.
-
 
 ```bash
 ../rabbitmq-server/scripts/rabbitmqctl -n rabbit-test@hostname set_policy my_stream "^shard\." '{"stream": "my_stream"}'
@@ -85,7 +85,7 @@ stream: shard.logs_stream - rabbit1@hostname
 stream: shard.logs_stream - rabbit2@hostname
 stream: shard.logs_stream - rabbit3@hostname
 ```
-Each queue will be local to the cluster included in its name.
+Each queue will be local to the node included in its name. Stream queues name will have the `stream:` prefix in their names.
 
 ## Obtaining the queue to consume from ##
 
@@ -99,6 +99,7 @@ The last API call accepts the optional parameter `node` which can be any of:
 
 - `local`: returns the stream queue that is local to the node where the HTTP call is made.
 - `random`: returns a random stream queue from the queues belonging to the `exchange` stream.
+- If the parameter is not present, then it returns all the stream queues for the `exchange` of `vhost`.
 
 ## Running the examples ##
 
@@ -122,3 +123,4 @@ That script will:
 ## TODO ##
 
 Adds parameters so the user can define an __amqpuri__ to use when declaring queues.
+Adds parameters to set the binding key for queues.
