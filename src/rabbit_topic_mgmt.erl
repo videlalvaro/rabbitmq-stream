@@ -11,9 +11,7 @@
 -include_lib("rabbitmq_management/include/rabbit_mgmt.hrl").
 -include_lib("webmachine/include/webmachine.hrl").
 
-dispatcher() -> [{["topic-queues"],                  ?MODULE, []},
-                 {["topic-queues", vhost],           ?MODULE, []},
-                 {["topic-queues", vhost, exchange], ?MODULE, []}].
+dispatcher() -> [{["topic-queues", vhost, exchange], ?MODULE, []}].
 web_ui()     -> [{javascript, <<"topic.js">>}]. %% No UI for now.
 
 %%--------------------------------------------------------------------
