@@ -71,6 +71,7 @@ The plugin adds a couple of new HTTP API endpoints to the management plugin.
 - __GET__ `/api/stream-queues/vhost/exchange`: returns all the stream queues for the `exchange` of `vhost`. 
 
 The last API call accepts the optional parameter `node` which can be any of: 
+
 - `local`: returns the stream queue that is local to the node where the HTTP call is made.
 - `random`: returns a random stream queue from the queues belonging to the `exchange` stream.
 
@@ -80,7 +81,7 @@ To test the plugin you can run the `examples/shard.php` example.
 
 First install composer as explained [here](http://getcomposer.org/doc/00-intro.md#installation-nix).
 
-Then cd into the `examples` folder and run: `composer.phar install`.
+Then `cd` into the `examples` folder and run: `composer.phar install`.
 
 Then run `php stream.php`.
 
