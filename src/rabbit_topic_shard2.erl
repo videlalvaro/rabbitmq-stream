@@ -36,6 +36,6 @@ ensure_sharded_queues(#exchange{name = XName}) ->
     ErrFun = fun(Code, Text) -> 
                 {error, Code, Text}
              end,
-    rabbit_topic_shard_util:disposable_connection_calls(#amqp_params_direct{}, Methods, ErrFun).
+    rabbit_topic_amqp_util:disposable_connection_calls(#amqp_params_direct{}, Methods, ErrFun).
     
 a2b(A) -> list_to_binary(atom_to_list(A)).

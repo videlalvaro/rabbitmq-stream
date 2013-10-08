@@ -52,9 +52,6 @@ active_for(X) ->
 
 %%----------------------------------------------------------------------------
 
-shard(X) ->
-    rabbit_topic_util:shard(X).
-
 maybe_start(X)->
     case shard(X) of
         true  -> 
@@ -70,3 +67,11 @@ maybe_stop(X) ->
             ok;
         false -> ok
     end.
+
+shard(X) ->
+    case topic_up() of 
+        true -> rabbit_topic_util:shard(X);
+        false -> false
+    end.
+    
+topic_up() -> is_pid(whereis(rabbit_topic_app)).
