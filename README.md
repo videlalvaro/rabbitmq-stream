@@ -1,6 +1,31 @@
 # RabbitMQ Stream Plugin #
 
-TODO add description.
+This plugin adds the concept of stream exchanges. The idea is that when you define a policy that makes an exchange a _stream_
+the plugin will create one queue per node in the cluster. Messages published to the exchange will be delivered to the queues
+either by consistent hashing or by a random algorithm (The plugin augments the _consistent-hash-exchange_ and the `random-exchange`
+plugins).
+
+## Why? ##
+
+Why do we need this? RabbitMQ queues are bound to the node where they were first declared. This means that even if you create a cluster
+of RabbitMQ brokers, at some point all message traffic will go to the node where the queue lives. What this plugin does is to give you
+a centralized place where to send your messages, plus load balancing across many nodes, by adding queues to the other nodes in the cluster.
+
+All the plumbing to __automatically maintain__ the stream queues is done by the plugin. If you add more nodes to the cluster, then the plugin
+will __automatically create queues in those nodes__.
+
+If you remove nodes from the cluster then RabbitMQ will take care of taking them out of the list of bound queues. Message loss can occur in the case 
+where a race occurs from a node going away and your message arriving to the stream exchange. If you can't afford to lose a message then you can use
+[publisher confirms](http://www.rabbitmq.com/confirms.html) to prevent message loss.
+
+## How to get the queue name  to consume from? ##
+
+With all these queues automatically added to the broker it can get tricky to know from which your consumer should get messages. The plugin adds a couple
+of HTTP endpoints to help with that. See bellow.
+
+## Ordering ##
+
+Message order is maintained per stream queue, but not globally. If you need global ordering then stick with [mirrored queues](http://www.rabbitmq.com/ha.html).
 
 ## Building the plugin ##
 
