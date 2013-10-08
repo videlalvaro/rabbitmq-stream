@@ -3,3 +3,4 @@ dist
 ebin
 enabled_plugins
 other_plugins
+examples/vendor
