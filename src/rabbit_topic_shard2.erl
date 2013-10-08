@@ -16,11 +16,10 @@ maybe_shard_exchanges() ->
     ok.
 
 maybe_shard_exchanges(VHost) ->
-    [rabbit_topic_util:rpc_call(X, start_child) || 
+    [rabbit_topic_util:rpc_call(X) || 
         X <- rabbit_topic_util:find_exchanges(VHost), rabbit_topic_util:shard(X)].
 
 ensure_sharded_queues(#exchange{name = XName}) ->
-    io:format("ensure_sharded_queues called: ~p~n", [XName]),
     %% queue needs to be started on the respective node.
     %% connection will be local.
     %% each rabbit_topic_shard will receive the event

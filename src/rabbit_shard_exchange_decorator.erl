@@ -55,7 +55,7 @@ active_for(X) ->
 maybe_start(X)->
     case shard(X) of
         true  -> 
-            rabbit_topic_util:rpc_call(X, start_child),
+            rabbit_topic_util:rpc_call(X),
             ok;
         false -> ok
     end.
@@ -63,7 +63,7 @@ maybe_start(X)->
 maybe_stop(X) ->
     case shard(X) of
         true  -> 
-            rabbit_topic_util:rpc_call(X, stop_child),
+            rabbit_topic_util:rpc_call(X),
             ok;
         false -> ok
     end.

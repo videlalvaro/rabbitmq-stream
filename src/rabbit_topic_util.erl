@@ -1,6 +1,6 @@
 -module(rabbit_topic_util).
 
--export([shard/1, rpc_call/2, find_exchanges/1]).
+-export([shard/1, rpc_call/1, find_exchanges/1]).
 -export([queue_for_node/3, list_queues/2, list_queues_on_vhost/1]).
 -export([exchange_name/1, make_queue_name/2]).
 
@@ -22,7 +22,7 @@ shard0(X) ->
         _         -> true
     end.
 
-rpc_call(X, _Fun) ->
+rpc_call(X) ->
     [rpc:call(Node, rabbit_topic_shard2, ensure_sharded_queues, [X]) || 
         Node <- rabbit_mnesia:cluster_nodes(running)].
 
