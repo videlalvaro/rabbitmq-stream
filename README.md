@@ -1,6 +1,6 @@
 # RabbitMQ Stream Plugin #
 
-This plugin adds the concept of stream exchanges. The idea is that when you define a policy that makes an exchange a _stream_
+This plugin adds the concept of stream exchanges. The idea is that when you define a policy that makes an exchange a _stream_,
 the plugin will create one queue per node in the cluster. Messages published to the exchange will be delivered to the queues
 either by __consistent hashing__ or by a __random algorithm__ (The plugin augments the `consistent-hash-exchange` and the `random-exchange`
 plugins).
