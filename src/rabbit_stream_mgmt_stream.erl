@@ -1,4 +1,4 @@
--module(rabbit_topic_mgmt_topic).
+-module(rabbit_stream_mgmt_stream).
 
 -export([init/1, to_json/2, resource_exists/2, content_types_provided/2,
          is_authorized/2]).
@@ -56,14 +56,14 @@ id(ReqData) ->
 maybe_filter(ReqData, Exchange, VHost) ->
     case wrq:get_qs_value("node", ReqData) of
         "local"  -> 
-            case rabbit_topic_util:queue_for_node(Exchange, VHost, node()) of
+            case rabbit_stream_util:queue_for_node(Exchange, VHost, node()) of
                 {ok, Q} -> [Q];
                 _       -> []
             end;
         "random" -> 
-            random_queue(rabbit_topic_util:list_queues(Exchange, VHost));
+            random_queue(rabbit_stream_util:list_queues(Exchange, VHost));
         _ -> 
-            rabbit_topic_util:list_queues(Exchange, VHost)
+            rabbit_stream_util:list_queues(Exchange, VHost)
     end.
     
 random_queue(Qs) ->

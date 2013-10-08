@@ -1,4 +1,4 @@
--module(rabbit_topic_app).
+-module(rabbit_stream_app).
 
 -behaviour(application).
 -export([start/2, stop/1]).

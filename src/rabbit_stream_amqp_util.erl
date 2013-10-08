@@ -1,4 +1,4 @@
--module(rabbit_topic_amqp_util).
+-module(rabbit_stream_amqp_util).
 
 -include_lib("amqp_client/include/amqp_client.hrl").
 

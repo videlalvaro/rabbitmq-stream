@@ -1,9 +1,9 @@
--module(rabbit_shard_exchange_decorator).
+-module(rabbit_stream_exchange_decorator).
 
 -rabbit_boot_step({?MODULE,
-                   [{description, "shard exchange decorator"},
+                   [{description, "stream exchange decorator"},
                     {mfa, {rabbit_registry, register,
-                           [exchange_decorator, <<"shard">>, ?MODULE]}},
+                           [exchange_decorator, <<"stream">>, ?MODULE]}},
                     {requires, rabbit_registry},
                     {enables, recovery}]}).
 
@@ -55,7 +55,7 @@ active_for(X) ->
 maybe_start(X)->
     case shard(X) of
         true  -> 
-            rabbit_topic_util:rpc_call(X),
+            rabbit_stream_util:rpc_call(X),
             ok;
         false -> ok
     end.
@@ -63,15 +63,15 @@ maybe_start(X)->
 maybe_stop(X) ->
     case shard(X) of
         true  -> 
-            rabbit_topic_util:rpc_call(X),
+            rabbit_stream_util:rpc_call(X),
             ok;
         false -> ok
     end.
 
 shard(X) ->
-    case topic_up() of 
-        true -> rabbit_topic_util:shard(X);
+    case stream_up() of 
+        true -> rabbit_stream_util:shard(X);
         false -> false
     end.
     
-topic_up() -> is_pid(whereis(rabbit_topic_app)).
+stream_up() -> is_pid(whereis(rabbit_stream_app)).

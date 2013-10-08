@@ -1,5 +1,5 @@
 dispatcher_add(function(sammy) {
-    sammy.get('#/topics', function() {
+    sammy.get('#/streams', function() {
         true;
     });
 });

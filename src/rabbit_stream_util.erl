@@ -1,4 +1,4 @@
--module(rabbit_topic_util).
+-module(rabbit_stream_util).
 
 -export([shard/1, rpc_call/1, find_exchanges/1]).
 -export([queue_for_node/3, list_queues/2, list_queues_on_vhost/1]).
@@ -17,13 +17,13 @@ shard(_X) ->
     false.
 
 shard0(X) ->
-    case rabbit_policy:get(<<"topic">>, X) of
+    case rabbit_policy:get(<<"stream">>, X) of
         undefined -> false;
         _         -> true
     end.
 
 rpc_call(X) ->
-    [rpc:call(Node, rabbit_topic_shard, ensure_sharded_queues, [X]) || 
+    [rpc:call(Node, rabbit_stream_shard, ensure_sharded_queues, [X]) || 
         Node <- rabbit_mnesia:cluster_nodes(running)].
 
 queue_for_node(Exchange, Vhost, Node) ->
@@ -58,7 +58,7 @@ make_queue_name(#resource{kind = exchange, name = XBin}, Node) ->
     make_queue_name(XBin, Node);
     
 make_queue_name(XName, Node) when is_binary (XName), is_binary(Node) ->
-    <<"topic: ", XName/binary, " - ", Node/binary>>.
+    <<"stream: ", XName/binary, " - ", Node/binary>>.
 
 %%----------------------------------------------------------------------------
 

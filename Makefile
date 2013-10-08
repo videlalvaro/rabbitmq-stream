@@ -5,7 +5,7 @@ MAIN_NODE=undefined
 OTHER_NODE=undefined
 OTHER_PORT=undefined
 OTHER_PLUGINS=other_plugins
-BASEDIR=${TMPDIR}/rabbitmq-topic-tests/$(OTHER_NODE)
+BASEDIR=${TMPDIR}/rabbitmq-stream-tests/$(OTHER_NODE)
 PID_FILE=$(BASEDIR)/$(OTHER_NODE).pid
 
 start-other-node:

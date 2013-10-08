@@ -1,4 +1,4 @@
--module(rabbit_topic_mgmt_topics).
+-module(rabbit_stream_mgmt_streams).
 
 -export([init/1, to_json/2, resource_exists/2, content_types_provided/2,
          is_authorized/2]).
@@ -28,4 +28,4 @@ is_authorized(ReqData, Context) ->
 %%--------------------------------------------------------------------
 
 queues0(ReqData) ->
-    rabbit_mgmt_util:all_or_one_vhost(ReqData, fun rabbit_topic_util:list_queues_on_vhost/1).
+    rabbit_mgmt_util:all_or_one_vhost(ReqData, fun rabbit_stream_util:list_queues_on_vhost/1).
