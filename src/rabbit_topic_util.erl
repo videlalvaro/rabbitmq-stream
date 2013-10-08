@@ -47,14 +47,24 @@ queue_for_node(Exchange, Vhost, Node) ->
         false -> {error, not_alive}
     end.
 
+% delete_queues(Exchange, Vhost) ->
+%     Qs = list_queues(Exchange).
+
+list_queues(#resource{name = XBin}, Vhost) ->
+    list_queues(XBin, Vhost);
+
 list_queues(Exchange, Vhost) ->
-    Nodes = rabbit_mnesia:cluster_nodes(running),
-    Qs = [make_queue_name(Exchange, a2b(N)) || N <- Nodes],
-    lists:filter(fun (Q) -> is_queue_alive(Q, Vhost) end, Qs).
+    lists:filter(fun (Q) -> 
+                     is_queue_alive(Q, Vhost) 
+                 end, list_queues0(Exchange)).
     
 list_queues_on_vhost(Vhost) ->    
     [list_queues(exchange_name(XName), Vhost) || 
         #'exchange'{name = XName} = X <- find_exchanges(Vhost), shard(X)].
+
+list_queues0(Exchange) ->
+    [make_queue_name(Exchange, a2b(N)) ||
+        N <- rabbit_mnesia:cluster_nodes(running)].
 
 exchange_name(#resource{name = XBin}) -> XBin.
 
