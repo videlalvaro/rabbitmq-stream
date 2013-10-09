@@ -24,7 +24,7 @@ where a race occurs from a node going away and your message arriving to the stre
 ## How to get the queue name to consume from? ##
 
 With all these queues automatically added to the broker it can get tricky to know from which queue your consumer should get messages. The plugin adds a couple
-of HTTP endpoints to help with that. See bellow.
+of HTTP endpoints to help with that. See [bellow](https://github.com/videlalvaro/rabbitmq-stream#obtaining-the-queue-to-consume-from).
 
 ## Ordering ##
 
