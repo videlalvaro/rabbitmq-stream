@@ -123,6 +123,10 @@ That script will:
 - Retrieve the local stream queue for exchange `shard.logs_stream`
 - Retrieve a random stream queue for exchange `shard.logs_stream`
 
+## Plugin Status ##
+
+At the moment the plugin is __experimental__ in order to receive feedback from the community.
+
 ## TODO ##
 
 - Adds parameters so the user can define an __amqpuri__ to use when declaring queues.
