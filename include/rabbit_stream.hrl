@@ -1,0 +1,2 @@
+-define(STREAM_TABLE, rabbit_stream).
+-record(stream, {name, shards_per_node = 1}).
