@@ -37,12 +37,3 @@ find_exchanges(VHost) ->
     rabbit_exchange:list(VHost).
 
 a2b(A) -> list_to_binary(atom_to_list(A)).
-
-%%----------------------------------------------------------------------------
-
-is_queue_alive(QBin, Vhost) ->
-    R = rabbit_misc:r(Vhost, queue, QBin),
-    case rabbit_amqqueue:lookup(R) of
-        {error,not_found} -> false;
-        {ok, _Q}          -> true
-    end.
