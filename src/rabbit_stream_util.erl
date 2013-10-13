@@ -1,8 +1,7 @@
 -module(rabbit_stream_util).
 
--export([shard/1, rpc_call/1, find_exchanges/1]).
--export([queue_for_node/3, list_queues/2, list_queues_on_vhost/1]).
--export([exchange_name/1, make_queue_name/2]).
+-export([shard/1, rpc_call/1, find_exchanges/1, exchange_name/1]).
+-export([make_queue_name/3, a2b/1]).
 
 -include_lib("amqp_client/include/amqp_client.hrl").
 
@@ -26,46 +25,20 @@ rpc_call(X) ->
     [rpc:call(Node, rabbit_stream_shard, ensure_sharded_queues, [X]) || 
         Node <- rabbit_mnesia:cluster_nodes(running)].
 
-queue_for_node(Exchange, Vhost, Node) ->
-    Q = make_queue_name(Exchange, a2b(Node)),
-    case is_queue_alive(Q, Vhost) of
-        true -> {ok, Q};
-        false -> {error, not_alive}
-    end.
-
-% delete_queues(Exchange, Vhost) ->
-%     Qs = list_queues(Exchange).
-
-list_queues(#resource{name = XBin}, Vhost) ->
-    list_queues(XBin, Vhost);
-
-list_queues(Exchange, Vhost) ->
-    lists:filter(fun (Q) -> 
-                     is_queue_alive(Q, Vhost) 
-                 end, list_queues0(Exchange)).
+make_queue_name(QBin, NodeBin, QNum) ->
+    %% we do this to prevent unprintable characters that might bork the 
+    %% management pluing when listing queues.
+    QNumBin = list_to_binary(lists:flatten(io_lib:format("~p", [QNum]))),
+    <<"stream: ", QBin/binary, " - ", NodeBin/binary, " - ", QNumBin/binary>>.
     
-list_queues_on_vhost(Vhost) ->    
-    [list_queues(exchange_name(XName), Vhost) || 
-        #'exchange'{name = XName} = X <- find_exchanges(Vhost), shard(X)].
-
-list_queues0(Exchange) ->
-    [make_queue_name(Exchange, a2b(N)) ||
-        N <- rabbit_mnesia:cluster_nodes(running)].
-
 exchange_name(#resource{name = XBin}) -> XBin.
-
-make_queue_name(#resource{kind = exchange, name = XBin}, Node) ->
-    make_queue_name(XBin, Node);
-    
-make_queue_name(XName, Node) when is_binary (XName), is_binary(Node) ->
-    <<"stream: ", XName/binary, " - ", Node/binary>>.
-
-%%----------------------------------------------------------------------------
 
 find_exchanges(VHost) ->
     rabbit_exchange:list(VHost).
 
 a2b(A) -> list_to_binary(atom_to_list(A)).
+
+%%----------------------------------------------------------------------------
 
 is_queue_alive(QBin, Vhost) ->
     R = rabbit_misc:r(Vhost, queue, QBin),

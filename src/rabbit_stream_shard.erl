@@ -10,8 +10,14 @@
                     {requires,    direct_client},
                     {enables,     networking}]}).
 
+-import(rabbit_stream_util, [a2b/1, exchange_name/1]).
+
 maybe_shard_exchanges() ->
     %% TODO: get an actual vhost.
+    %% we need to list vhosts and then iterate over it
+    %% How to ensure the right credentials?
+    %% maybe list policies on vhost, then get the shard ones
+    %5 and from there get the list of vhosts.
     maybe_shard_exchanges(<<"/">>),
     ok.
 
@@ -24,17 +30,27 @@ ensure_sharded_queues(#exchange{name = XName}) ->
     %% connection will be local.
     %% each rabbit_stream_shard will receive the event
     %% and can declare the queue locally
+    Shards = 4,
     Node = node(),
-    Methods = [
-        #'queue.declare'{queue = rabbit_stream_util:make_queue_name(XName, a2b(Node)),
-                         durable = true},
-        #'queue.bind'{exchange = rabbit_stream_util:exchange_name(XName), 
-                      queue = rabbit_stream_util:make_queue_name(XName, a2b(Node)), 
-                      routing_key = <<"1000">>}
-    ],
+    F = fun (N) ->
+            QBin = rabbit_stream_util:make_queue_name(exchange_name(XName), a2b(Node), N),
+            [#'queue.declare'{queue = QBin, durable = true},
+             #'queue.bind'{exchange = exchange_name(XName), 
+                           queue = QBin, 
+                           routing_key = <<"1000">>}]
+        end,
     ErrFun = fun(Code, Text) -> 
                 {error, Code, Text}
              end,
-    rabbit_stream_amqp_util:disposable_connection_calls(#amqp_params_direct{}, Methods, ErrFun).
+    rabbit_stream_amqp_util:disposable_connection_calls(
+        #amqp_params_direct{}, lists:flatten(do_n(F, Shards)), ErrFun).
+
+%%----------------------------------------------------------------------------
+
+do_n(F, N) ->
+    do_n(F, 0, N, []).
     
-a2b(A) -> list_to_binary(atom_to_list(A)).
+do_n(_F, N, N, Acc) ->
+    Acc;
+do_n(F, Count, N, Acc) ->
+    do_n(F, Count+1, N, [F(Count)|Acc]).
