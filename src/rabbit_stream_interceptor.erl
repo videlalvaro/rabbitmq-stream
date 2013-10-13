@@ -33,4 +33,4 @@ process_queue_name(#resource{name = QBin, virtual_host = VHost}, QName2) ->
 applies_to('basic_consume') -> true;
 applies_to(_Other) -> false.
 
-priority() -> 10.
+priority() -> 0.
