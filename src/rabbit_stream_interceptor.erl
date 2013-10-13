@@ -22,6 +22,7 @@ description() ->
 process_queue_name(#resource{name = QBin, virtual_host = VHost}, QName2) ->
     case mnesia:dirty_read(?STREAM_TABLE, QBin) of
         []  -> 
+            %% Queue is not part of a shard, return default QName
             {ok, QName2};
         [#stream{shards_per_node = N}] -> 
             Rand = crypto:rand_uniform(0, N),
