@@ -6,16 +6,33 @@
                            [exchange_decorator, <<"stream">>, ?MODULE]}},
                     {requires, rabbit_registry},
                     {enables, recovery}]}).
+                    
+-rabbit_boot_step({rabbit_stream_exchange_decorator_mnesia,
+                   [{description, "rabbit stream exchange decorator: mnesia"},
+                    {mfa, {?MODULE, setup_schema, []}},
+                    {requires, database},
+                    {enables, external_infrastructure}]}).
 
 -include_lib("amqp_client/include/amqp_client.hrl").
+-include("rabbit_stream.hrl").
 
 -behaviour(rabbit_exchange_decorator).
 
 -export([description/0, serialise_events/1]).
 -export([create/2, delete/3, policy_changed/2,
          add_binding/3, remove_bindings/3, route/2, active_for/1]).
+-export([setup_schema/0]).
 
 %%----------------------------------------------------------------------------
+
+setup_schema() ->
+    case mnesia:create_table(?STREAM_TABLE,
+                             [{attributes, record_info(fields, stream)},
+                              {record_name, stream},
+                              {type, set}]) of
+        {atomic, ok} -> ok;
+        {aborted, {already_exists, ?STREAM_TABLE}} -> ok
+    end.
 
 description() ->
     [{description, <<"Shard exchange decorator">>}].
@@ -52,9 +69,16 @@ active_for(X) ->
 
 %%----------------------------------------------------------------------------
 
-maybe_start(X)->
+maybe_start(#exchange{name = #resource{name = XBin}} = X)->
     case shard(X) of
         true  -> 
+            rabbit_misc:execute_mnesia_transaction(
+              fun () ->
+                  mnesia:write(?STREAM_TABLE,
+                               #stream{name = XBin,
+                                       shards_per_node = 4},
+                               write)
+              end),
             rabbit_stream_util:rpc_call(X),
             ok;
         false -> ok
