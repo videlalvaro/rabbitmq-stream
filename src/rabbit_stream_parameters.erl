@@ -38,7 +38,7 @@ validate(_VHost, <<"stream-definition">>, Name, Term) ->
 validate(_VHost, <<"stream-connection-params">>, Name, Term) ->
     rabbit_parameter_validation:proplist(
       Name, [{<<"uri">>, fun validate_uri/2, mandatory},
-             {<<"routing-key">>, fun rabbit_parameter_validation:number/2}], Term);
+             {<<"routing-key">>, fun rabbit_parameter_validation:binary/2, optional}], Term);
 
 validate(_VHost, _Component, Name, _Term) ->
     {error, "name not recognised: ~p", [Name]}.
@@ -56,7 +56,7 @@ notify(_VHost, <<"stream-definition">>, Name, Term) ->
 %% 2) we need to bind the queues using the new routing key
 %%    and unbind them from the old one.
 notify(_VHost, <<"stream-connection-params">>, Name, Term) ->
-    io:format("notify Term: ~p~n", [Name, Term]),
+    io:format("notify Name: ~p Term: ~p~n", [Name, Term]),
     ok.
 
 %% A stream definition is gone. We can't remove queues so
@@ -72,7 +72,7 @@ notify_clear(_VHost, <<"stream-connection-params">>, Name) ->
     ok.
 
 validate_shards_per_node(Name, Term) when is_number(Term) ->
-    case Term =< 0 of
+    case Term >= 0 of
         true  ->
             ok;
         false ->
