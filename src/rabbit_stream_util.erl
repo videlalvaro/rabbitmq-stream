@@ -6,6 +6,8 @@
 -include_lib("amqp_client/include/amqp_client.hrl").
 -include ("rabbit_stream.hrl").
 
+-import(rabbit_misc, [pget/3]).
+
 %% only shard CH or random exchanges.
 shard(X = #exchange{type = 'x-random'}) ->
     shard0(X);
@@ -17,7 +19,7 @@ shard(_X) ->
     false.
 
 shard0(X) ->
-    case rabbit_policy:get(<<"stream-definition">>, X) of
+    case get_policy(X) of
         undefined -> false;
         _         -> true
     end.
@@ -40,13 +42,23 @@ find_exchanges(VHost) ->
 a2b(A) -> list_to_binary(atom_to_list(A)).
 
 shards_per_node(X) ->
-    case rabbit_runtime_parameters:value(
-           vhost(X), <<"stream-definition">>, <<"shards-per-node">>) of
-        not_found -> ?DEFAULT_SHARDS_NUM;
-        N         -> N
+    case get_policy(X) of
+        undefined -> ?DEFAULT_SHARDS_NUM;
+        Name      ->
+            case rabbit_runtime_parameters:value(
+                   vhost(X), <<"stream-definition">>, Name) of
+                not_found -> ?DEFAULT_SHARDS_NUM;
+                Value     -> shard_num_from_value(Value)
+            end
     end.
 
 %%----------------------------------------------------------------------------
 
 vhost(                 #resource{virtual_host = VHost})  -> VHost;
 vhost(#exchange{name = #resource{virtual_host = VHost}}) -> VHost.
+
+get_policy(X) ->
+    rabbit_policy:get(<<"stream-definition">>, X).
+    
+shard_num_from_value(Value) ->
+    pget(<<"shards-per-node">>, Value, ?DEFAULT_SHARDS_NUM).
