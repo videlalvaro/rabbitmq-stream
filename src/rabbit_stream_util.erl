@@ -49,17 +49,13 @@ shards_per_node(X) ->
 routing_key(X) ->
     case get_parameter_value(<<"stream-definition">>, <<"connection-params">>, X) of
         undefined ->
-            io:format("routing_key: undefined~n", []),
             ?DEFAULT_RK;
         Name ->
-            io:format("routing_key: Name ~p~n", [Name]),
             case rabbit_runtime_parameters:value(
                     vhost(X), <<"stream-connection-params">>, Name) of
                 undefined -> 
-                    io:format("routing_key: undefined 2~n", []),
                     ?DEFAULT_RK;
                 Value     -> 
-                    io:format("routing_key: Value ~p~n", [Value]),
                     pget(<<"routing-key">>, Value, ?DEFAULT_RK)
             end
     end.
