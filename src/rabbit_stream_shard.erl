@@ -25,15 +25,13 @@ maybe_shard_exchanges(VHost) ->
     [rabbit_stream_util:rpc_call(X) || 
         X <- rabbit_stream_util:find_exchanges(VHost), rabbit_stream_util:shard(X)].
 
-ensure_sharded_queues(#exchange{name = XName}) ->
+ensure_sharded_queues(#exchange{name = XName} = X) ->
     %% queue needs to be started on the respective node.
     %% connection will be local.
     %% each rabbit_stream_shard will receive the event
     %% and can declare the queue locally
-    Shards = 4,
-    Node = node(),
     F = fun (N) ->
-            QBin = rabbit_stream_util:make_queue_name(exchange_name(XName), a2b(Node), N),
+            QBin = rabbit_stream_util:make_queue_name(exchange_name(XName), a2b(node()), N),
             [#'queue.declare'{queue = QBin, durable = true},
              #'queue.bind'{exchange = exchange_name(XName), 
                            queue = QBin, 
@@ -42,8 +40,9 @@ ensure_sharded_queues(#exchange{name = XName}) ->
     ErrFun = fun(Code, Text) -> 
                 {error, Code, Text}
              end,
+    SPN = rabbit_stream_util:shards_per_node(X),
     rabbit_stream_amqp_util:disposable_connection_calls(
-        #amqp_params_direct{}, lists:flatten(do_n(F, Shards)), ErrFun).
+        #amqp_params_direct{}, lists:flatten(do_n(F, SPN)), ErrFun).
 
 %%----------------------------------------------------------------------------
 
