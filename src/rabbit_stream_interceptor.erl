@@ -5,7 +5,7 @@
 
 -behaviour(rabbit_channel_interceptor).
 
--export([description/0, process_queue_name/2, applies_to/1, priority/0]).
+-export([description/0, process_queue_name/2, applies_to/1, priority_param/0]).
 
 -import(rabbit_stream_util, [a2b/1]).
 
@@ -33,4 +33,4 @@ process_queue_name(#resource{name = QBin, virtual_host = VHost}, QName2) ->
 applies_to('basic_consume') -> true;
 applies_to(_Other) -> false.
 
-priority() -> 0.
+priority_param() -> <<"stream-method-priority">>.
