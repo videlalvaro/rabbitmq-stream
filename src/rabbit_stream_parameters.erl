@@ -14,7 +14,7 @@
                     {requires, rabbit_registry},
                     {enables, recovery}]}).
 
-%% $CTL set_parameter stream-connection-params local5673 '{"uri": "amqp://guest:guest@localhost:5673", "routing-key": 10000}'
+%% $CTL set_parameter stream-connection-params local5673 '{"uri": "amqp://guest:guest@localhost:5673", "routing-key": "10000"}'
 %% $CTL set_parameter stream-definition my_stream '{"connection-params": "local5673", "shards-per-node": 4}'
 %% $CTL set_policy my-stream   "^stream\."   '{"stream-definition": "my_stream"}'
 
