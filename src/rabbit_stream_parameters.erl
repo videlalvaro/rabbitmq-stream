@@ -25,6 +25,9 @@ register() ->
                           {policy_validator,  <<"stream-definition">>}]],
     ok.
 
+validate(_VHost, <<"stream-method-priority">>, Name, Term) ->
+    rabbit_parameter_validation:number(Name, Term);
+
 validate(_VHost, <<"stream-definition">>, Name, Term) ->
     rabbit_parameter_validation:proplist(
        Name,
