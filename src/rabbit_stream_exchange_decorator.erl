@@ -72,11 +72,12 @@ active_for(X) ->
 maybe_start(#exchange{name = #resource{name = XBin}} = X)->
     case shard(X) of
         true  -> 
+            SPN = rabbit_stream_util:shards_per_node(X),
             rabbit_misc:execute_mnesia_transaction(
               fun () ->
                   mnesia:write(?STREAM_TABLE,
                                #stream{name = XBin,
-                                       shards_per_node = 4},
+                                       shards_per_node = SPN},
                                write)
               end),
             rabbit_stream_util:rpc_call(X),
