@@ -30,12 +30,13 @@ ensure_sharded_queues(#exchange{name = XName} = X) ->
     %% connection will be local.
     %% each rabbit_stream_shard will receive the event
     %% and can declare the queue locally
+    RKey = rabbit_stream_util:routing_key(X),
     F = fun (N) ->
             QBin = rabbit_stream_util:make_queue_name(exchange_name(XName), a2b(node()), N),
             [#'queue.declare'{queue = QBin, durable = true},
              #'queue.bind'{exchange = exchange_name(XName), 
                            queue = QBin, 
-                           routing_key = <<"1000">>}]
+                           routing_key = RKey}]
         end,
     ErrFun = fun(Code, Text) -> 
                 {error, Code, Text}

@@ -1,7 +1,8 @@
 -module(rabbit_stream_util).
 
--export([shard/1, shards_per_node/1, rpc_call/1, find_exchanges/1]).
+-export([shard/1, rpc_call/1, find_exchanges/1]).
 -export([ exchange_name/1, make_queue_name/3, a2b/1]).
+-export([shards_per_node/1, routing_key/1]).
 
 -include_lib("amqp_client/include/amqp_client.hrl").
 -include ("rabbit_stream.hrl").
@@ -42,13 +43,18 @@ find_exchanges(VHost) ->
 a2b(A) -> list_to_binary(atom_to_list(A)).
 
 shards_per_node(X) ->
-    case get_policy(X) of
-        undefined -> ?DEFAULT_SHARDS_NUM;
-        Name      ->
+    get_parameter_value(<<"stream-definition">>, <<"shards-per-node">>, 
+        X, ?DEFAULT_SHARDS_NUM).
+
+routing_key(X) ->
+    case get_parameter_value(<<"stream-definition">>, <<"connection-params">>, X) of
+        undefined ->
+            ?DEFAULT_RK;
+        Name ->
             case rabbit_runtime_parameters:value(
-                   vhost(X), <<"stream-definition">>, Name) of
-                not_found -> ?DEFAULT_SHARDS_NUM;
-                Value     -> shard_num_from_value(Value)
+                    vhost(X), <<"stream-connection-params">>, Name) of
+                undefined -> ?DEFAULT_RK;
+                Value     -> pget(<<"routing-key">>, Value, ?DEFAULT_RK)
             end
     end.
 
@@ -59,6 +65,17 @@ vhost(#exchange{name = #resource{virtual_host = VHost}}) -> VHost.
 
 get_policy(X) ->
     rabbit_policy:get(<<"stream-definition">>, X).
-    
-shard_num_from_value(Value) ->
-    pget(<<"shards-per-node">>, Value, ?DEFAULT_SHARDS_NUM).
+
+get_parameter_value(Comp, Param, X) ->
+    get_parameter_value(Comp, Param, X, undefined).
+
+get_parameter_value(Comp, Param, X, Default) ->
+    case get_policy(X) of
+        undefined -> Default;
+        Name      ->
+            case rabbit_runtime_parameters:value(
+                   vhost(X), Comp, Name) of
+                not_found -> Default;
+                Value     -> pget(Param, Value, Default)
+            end
+    end.
