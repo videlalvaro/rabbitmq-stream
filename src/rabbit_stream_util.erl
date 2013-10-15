@@ -1,8 +1,8 @@
 -module(rabbit_stream_util).
 
 -export([shard/1, rpc_call/1, find_exchanges/1]).
--export([ exchange_name/1, make_queue_name/3, a2b/1]).
--export([shards_per_node/1, routing_key/1]).
+-export([exchange_name/1, make_queue_name/3, a2b/1]).
+-export([shards_per_node/1, routing_key/1, username/1]).
 
 -include_lib("amqp_client/include/amqp_client.hrl").
 -include ("rabbit_stream.hrl").
@@ -43,13 +43,15 @@ find_exchanges(VHost) ->
 a2b(A) -> list_to_binary(atom_to_list(A)).
 
 shards_per_node(X) ->
-    get_parameter_value(<<"stream-definition">>, <<"shards-per-node">>, 
-        X, ?DEFAULT_SHARDS_NUM).
+    get_parameter(<<"shards-per-node">>, X, ?DEFAULT_SHARDS_NUM).
 
 %% Move routing key to stream-definition
 routing_key(X) ->
-    get_parameter_value(<<"stream-definition">>, <<"routing-key">>, 
-        X, ?DEFAULT_RK).
+    get_parameter(<<"routing-key">>, X, ?DEFAULT_RK).
+
+username(X) ->
+    {ok, DefaultUser} = application:get_env(rabbit, default_user),
+    get_parameter(<<"local-username">>, X, DefaultUser).
 
 %%----------------------------------------------------------------------------
 
@@ -58,6 +60,13 @@ vhost(#exchange{name = #resource{virtual_host = VHost}}) -> VHost.
 
 get_policy(X) ->
     rabbit_policy:get(<<"stream-definition">>, X).
+
+get_parameter(Parameter, X, Default) ->
+    Default2 = rabbit_runtime_parameters:value(
+                 vhost(X), <<"stream">>, Parameter, Default),
+    get_parameter_value(<<"stream-definition">>, Parameter, 
+        X, Default2).
+
 
 get_parameter_value(Comp, Param, X, Default) ->
     case get_policy(X) of
