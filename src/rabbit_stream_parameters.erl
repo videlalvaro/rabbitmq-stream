@@ -47,6 +47,10 @@ validate(_VHost, <<"stream-definition">>, Name, Term) ->
 validate(_VHost, _Component, Name, _Term) ->
     {error, "name not recognised: ~p", [Name]}.
 
+notify(_VHost, <<"stream">>, Name, Term) ->
+    io:format("notify stream Name: ~p Term: ~p~n", [Name, Term]),
+    ok;
+
 %% Maybe enlarge shard number by declaring new queues in case there 
 %% shards-per-node increased.
 %% We can't delete extra queues because the user might have messages on them.
@@ -55,10 +59,13 @@ notify(_VHost, <<"stream-definition">>, Name, Term) ->
     io:format("notify Name: ~p Term: ~p~n", [Name, Term]),
     ok.
 
+notify_clear(_VHost, <<"stream">>, Name) ->
+    io:format("notify_clear stream Name: ~p~n", [Name]),
+    ok;
+
 %% A stream definition is gone. We can't remove queues so
 %% we resort to defaults when declaring queues or while
 %% intercepting channel methods.
-
 %% 1) don't care about connection param changes. They will be
 %%    used automatically next time we need to declare a queue.
 %% 2) we need to bind the queues using the new routing key
