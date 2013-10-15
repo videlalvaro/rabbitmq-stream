@@ -128,6 +128,24 @@ as well.
 When you issue a `basic.consume`, the plugin will randomly choose a local sharded queue to return from. Of course the local sharded queue
 will be part of the set of queues that belong to the chosen stream.
 
+## Configuration parameters ##
+
+The following configuration parameters affect the plugin behaviour:
+
+- `local-username`: The username the plugin should use when connecting to RabbitMQ. The plugin connects to RabbitMQ to declare queues, for example. Defaults to RabbitMQ's `default_user`
+- `shards-per-node`: How many sharded queues to create per node. This depends on the amount of cores in your server. Defaults to `1`.
+- `routing-key`: The routing key used when the plugin binds the queues to the stream exchange. Defaults to `"10000"`.
+
+First the parameters specified in the `stream-definition` applies, if not set there, then the plugin defaults to global parameters. Finally it will use the default plugin values.
+
+To set a parameter for the plugin, you could use the following command:
+
+```bash
+rabbitmqctl set_parameter stream routing-key '"4321"'
+```
+
+That will set a global parameter for routing keys used by the plugin.
+
 ## Examples ##
 
 Inside the `etc` folder you can find a set of shell scripts where you can see how to set the various policies and parameters supported by the plugin.
