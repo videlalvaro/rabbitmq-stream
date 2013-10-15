@@ -32,7 +32,8 @@ ensure_sharded_queues(#exchange{name = XName} = X) ->
     %% and can declare the queue locally
     RKey = rabbit_stream_util:routing_key(X),
     F = fun (N) ->
-            QBin = rabbit_stream_util:make_queue_name(exchange_name(XName), a2b(node()), N),
+            QBin = rabbit_stream_util:make_queue_name(
+                       exchange_name(XName), a2b(node()), N),
             [#'queue.declare'{queue = QBin, durable = true},
              #'queue.bind'{exchange = exchange_name(XName), 
                            queue = QBin, 
@@ -42,8 +43,8 @@ ensure_sharded_queues(#exchange{name = XName} = X) ->
                 {error, Code, Text}
              end,
     SPN = rabbit_stream_util:shards_per_node(X),
-    rabbit_stream_amqp_util:disposable_connection_calls(
-        #amqp_params_direct{}, lists:flatten(do_n(F, SPN)), ErrFun).
+    rabbit_stream_amqp_util:disposable_connection_calls(X, 
+        lists:flatten(do_n(F, SPN)), ErrFun).
 
 %%----------------------------------------------------------------------------
 
