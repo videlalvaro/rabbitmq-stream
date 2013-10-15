@@ -55,11 +55,16 @@ active_for(X) ->
         false -> none
     end.
 
-%% We can't do anything here actually
-%% the queues can only be deleted by a queue_delete command
-%% since we don't want the user accidentally losing messages
-delete(_Tx, _X, _Bs) -> ok.
-policy_changed(_OldX, _NewX) -> ok.
+%% we have to remove the policy from ?STREAM_TABLE
+delete(transaction, _X, _Bs) -> ok;
+delete(none, X, _Bs) -> 
+  maybe_stop(X).
+
+%% we have to remove the old policy from ?STREAM_TABLE
+%% and then add the new one.
+policy_changed(OldX, NewX) -> 
+  maybe_stop(OldX),
+  maybe_start(NewX).
 
 %%----------------------------------------------------------------------------
 
@@ -80,6 +85,17 @@ maybe_start(#exchange{name = #resource{name = XBin}} = X)->
             ok;
         false -> ok
     end.
+
+maybe_stop(#exchange{name = #resource{name = XBin}} = X) ->
+  case shard(X) of
+    true  -> 
+      rabbit_misc:execute_mnesia_transaction(
+        fun () ->
+            mnesia:delete(?STREAM_TABLE, XBin)
+        end),
+      ok;
+    false -> ok
+  end.
 
 shard(X) ->
     case stream_up() of 
