@@ -1,7 +1,7 @@
 -module(rabbit_stream_util).
 
--export([shard/1, rpc_call/1, find_exchanges/1]).
--export([exchange_name/1, make_queue_name/3, a2b/1]).
+-export([shard/1, rpc_call/2, find_exchanges/1, sharded_exchanges/1]).
+-export([get_policy/1, exchange_name/1, make_queue_name/3, a2b/1]).
 -export([shards_per_node/1, routing_key/1, username/1]).
 
 -include_lib("amqp_client/include/amqp_client.hrl").
@@ -25,8 +25,11 @@ shard0(X) ->
         _         -> true
     end.
 
-rpc_call(X) ->
-    [rpc:call(Node, rabbit_stream_shard, ensure_sharded_queues, [X]) ||
+sharded_exchanges(VHost) ->
+    [X || X <- find_exchanges(VHost), shard(X)].
+
+rpc_call(F, Args) ->
+    [rpc:call(Node, rabbit_stream_shard, F, Args) ||
         Node <- rabbit_mnesia:cluster_nodes(running)].
 
 make_queue_name(QBin, NodeBin, QNum) ->

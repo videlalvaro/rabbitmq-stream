@@ -47,20 +47,34 @@ validate(_VHost, <<"stream-definition">>, Name, Term) ->
 validate(_VHost, _Component, Name, _Term) ->
     {error, "name not recognised: ~p", [Name]}.
 
-notify(_VHost, <<"stream">>, Name, Term) ->
-    io:format("notify stream Name: ~p Term: ~p~n", [Name, Term]),
+%% If the user wants to reduce the shards number, we can't
+%% delete queues, but when adding new nodes, those nodes will
+%% have the new parameter.
+notify(VHost, <<"stream">>, <<"shards-per-node">>, _Term) ->
+    rabbit_stream_shard:update_streams(VHost, shards_per_node),
     ok;
 
-%% Maybe enlarge shard number by declaring new queues in case there 
+notify(VHost, <<"stream">>, <<"routing-key">>, _Term) ->
+    rabbit_stream_shard:update_streams(VHost, all),
+    ok;
+
+notify(_VHost, <<"stream">>, _Name, _Term) ->
+    ok;
+
+%% Maybe increase shard number by declaring new queues in case there 
 %% shards-per-node increased.
 %% We can't delete extra queues because the user might have messages on them.
 %% We just ensure that there are SPN number of queues.
-notify(_VHost, <<"stream-definition">>, Name, Term) ->
-    io:format("notify Name: ~p Term: ~p~n", [Name, Term]),
+notify(VHost, <<"stream-definition">>, Name, _Term) ->
+    rabbit_stream_shard:update_named_stream(VHost, Name),
     ok.
 
-notify_clear(_VHost, <<"stream">>, Name) ->
-    io:format("notify_clear stream Name: ~p~n", [Name]),
+notify_clear(VHost, <<"stream">>, <<"shards-per-node">>) ->
+    rabbit_stream_shard:update_streams(VHost, shards_per_node),
+    ok;
+
+notify_clear(VHost, <<"stream">>, <<"routing-key">>) ->
+    rabbit_stream_shard:update_streams(VHost, all),
     ok;
 
 %% A stream definition is gone. We can't remove queues so
@@ -70,8 +84,8 @@ notify_clear(_VHost, <<"stream">>, Name) ->
 %%    used automatically next time we need to declare a queue.
 %% 2) we need to bind the queues using the new routing key
 %%    and unbind them from the old one.
-notify_clear(_VHost, <<"stream-definition">>, Name) ->
-    io:format("notify_clear Name: ~p~n", [Name]),
+notify_clear(VHost, <<"stream-definition">>, Name) ->
+    rabbit_stream_shard:update_named_stream(VHost, Name),
     ok.
 
 validate_shards_per_node(Name, Term) when is_number(Term) ->

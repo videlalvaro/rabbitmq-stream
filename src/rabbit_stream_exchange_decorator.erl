@@ -44,20 +44,8 @@ create(transaction, _X) ->
 create(none, X) ->
     maybe_start(X).
 
-delete(transaction, _X, _Bs) ->
-    ok;
-delete(none, X, _Bs) ->
-    maybe_stop(X).
-
-policy_changed(OldX, NewX) ->
-    maybe_stop(OldX),
-    maybe_start(NewX).
-
-add_binding(_Tx, _X, _B) ->
-    ok.
-
-remove_bindings(_Tx, _X, _Bs) ->
-    ok.
+add_binding(_Tx, _X, _B) -> ok.
+remove_bindings(_Tx, _X, _Bs) -> ok.
 
 route(_, _) -> [].
 
@@ -67,28 +55,28 @@ active_for(X) ->
         false -> none
     end.
 
+%% We can't do anything here actually
+%% the queues can only be deleted by a queue_delete command
+%% since we don't want the user accidentally losing messages
+delete(_Tx, _X, _Bs) -> ok.
+policy_changed(_OldX, _NewX) -> ok.
+
 %%----------------------------------------------------------------------------
 
 maybe_start(#exchange{name = #resource{name = XBin}} = X)->
     case shard(X) of
         true  -> 
             SPN = rabbit_stream_util:shards_per_node(X),
+            RK  = rabbit_stream_util:routing_key(X),
             rabbit_misc:execute_mnesia_transaction(
               fun () ->
                   mnesia:write(?STREAM_TABLE,
-                               #stream{name = XBin,
-                                       shards_per_node = SPN},
+                               #stream{name            = XBin,
+                                       shards_per_node = SPN,
+                                       routing_key     = RK},
                                write)
               end),
-            rabbit_stream_util:rpc_call(X),
-            ok;
-        false -> ok
-    end.
-
-maybe_stop(X) ->
-    case shard(X) of
-        true  -> 
-            rabbit_stream_util:rpc_call(X),
+            rabbit_stream_util:rpc_call(ensure_sharded_queues, [X]),
             ok;
         false -> ok
     end.
