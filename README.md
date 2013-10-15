@@ -1,8 +1,8 @@
 # RabbitMQ Stream Plugin #
 
 This plugin adds the concept of stream exchanges. The idea is that when you define a policy that makes an exchange a _stream_,
-the plugin will create one queue per node in the cluster (Think sharding, for some definition of sharding). Messages published 
-to the exchange will be delivered to the queues either by __consistent hashing__ or by a __random algorithm__ 
+the plugin will create at least one queue per node in the cluster (Think sharding, for some definition of sharding). 
+Messages published to the exchange will be delivered to the queues either by __consistent hashing__ or by a __random algorithm__ 
 (The plugin augments the `consistent-hash-exchange` and the `random-exchange` plugins).
 
 ## Why? ##
@@ -23,8 +23,8 @@ where a race occurs from a node going away and your message arriving to the stre
 
 ## How to get the queue name to consume from? ##
 
-With all these queues automatically added to the broker it can get tricky to know from which queue your consumer should get messages. The plugin adds a couple
-of HTTP endpoints to help with that. See [bellow](https://github.com/videlalvaro/rabbitmq-stream#obtaining-the-queue-to-consume-from).
+The plugin will randomly choose a local sharded queue during basic.consume.
+See [bellow](https://github.com/videlalvaro/rabbitmq-stream#obtaining-the-queue-to-consume-from).
 
 ## Ordering ##
 
@@ -32,16 +32,20 @@ Message order is maintained per stream queue, but not globally. If you need glob
 
 ## Building the plugin ##
 
+The plugin currently builds with a modified version of RabbitMQ that lives on the branch: `bug25817`. We are still discussing the design of the new
+features proposed by that plugin. See [bellow](https://github.com/videlalvaro/rabbitmq-stream#bug25817-branch) for more details.
+
 Get the RabbitMQ Public Umbrella ready as explained in the [RabbitMQ Plugin Development Guide](http://www.rabbitmq.com/plugin-development.html).
 
-Move to the umbrella folder an then run the following commands:
+Move to the umbrella folder an then run the following commands, to fetch dependencies:
 
 ```bash
-# the plugin allows routing via the random-exchange plugin
 git clone https://github.com/videlalvaro/random-exchange.git
 git clone https://github.com/rabbitmq/rabbitmq-consistent-hash-exchange.git
 git clone https://videlalvaro@bitbucket.org/videlalvaro/rabbitmq-stream.git
-cd rabbitmq-stream
+cd rabbitmq-server
+hg up bug25817
+cd ../rabbitmq-stream
 make
 ```
 ## Testing the plugin ##
@@ -74,60 +78,84 @@ You could repeat the previous two steps to start a couple more nodes. Don't forg
 
 So far we have a RabbitMQ cluster. Now it's time to add a policy to tell RabbitMQ to make some exchanges as streams.
 
+First we will add a `stream-definition` parameter that will tell the plugin which user to use when declaring queues, how many shards per node
+we want to create, and what's the routing key to use when binding the sharded queues to our exchange. If you use the consistent hash exchange
+then the routing keys need to be "an integer as a string", since routing keys in AMQP must be strings.
+
 ```bash
-../rabbitmq-server/scripts/rabbitmqctl -n rabbit-test@hostname set_policy my_stream "^shard\." '{"stream": "my_stream"}'
+../rabbitmq-server/scripts/rabbitmqctl set_parameter stream-definition my_stream '{"local-username": "guest", "shards-per-node": 2, "routing-key": "1234"}'
+```
+That parameter will tell the plugin to connect to RabbitMQ using the `guest`  username. It will then create 2 sharded queues per node. Based on the number
+of cores in your server, you need to decide how many `shards-per-node` you want. And finally the routing key used in this case will be `"1234"`. That 
+routing key will apply in the context of a consistent hash exchange.
+
+Let's add our policy now:
+
+```bash
+../rabbitmq-server/scripts/rabbitmqctl -n rabbit-test@hostname set_policy my_stream "^shard\." '{"stream-definition": "my_stream"}'
 ```
 
-That policy will create a stream called `my_stream` for all exchanges whose name start with `shard.`.
+That policy will create a stream called `my_stream` for all exchanges whose name start with `shard.`, whose `stream-definition` will be the one called
+`my_stream` that we've just defined.
 
-Then if you declare an exchange called for example `shard.logs_stream` the plugin will create one queue per node in the cluster.
-So if we have a cluster of nodes [rabbit1, rabbit2, rabbit3], we will get the following queues:
+Then if you declare an exchange called for example `shard.logs_stream` the plugin will create two queues per node in the cluster.
+So if we have a cluster of nodes [rabbit1, rabbit2, rabbit3], we will get the following queues in the cluster:
 
 ```
-stream: shard.logs_stream - rabbit1@hostname
-stream: shard.logs_stream - rabbit2@hostname
-stream: shard.logs_stream - rabbit3@hostname
+stream: shard.logs_stream - rabbit1@hostname - 0
+stream: shard.logs_stream - rabbit1@hostname - 1
+
+stream: shard.logs_stream - rabbit2@hostname - 0
+stream: shard.logs_stream - rabbit2@hostname - 1
+
+stream: shard.logs_stream - rabbit3@hostname - 0
+stream: shard.logs_stream - rabbit3@hostname - 1
 ```
-Each queue will be local to the node included in its name. Stream queues name will have the `stream:` prefix in their names.
+Each queue will be local to the node included in its name. Stream queues name will have the `stream:` prefix in their names, and an index suffix
+starting at zero.
 
 ## Obtaining the queue to consume from ##
 
-The plugin adds a couple of new HTTP API endpoints to the management plugin.
+You can consume messages from sharded queues without needing to care about those strange queue names created by the plugin.
 
-- __GET__ `/api/stream-queues/`: returns all the stream queues present in the broker.
-- __GET__ `/api/stream-queues/vhost`: returns all the stream queues for `vhost`.
-- __GET__ `/api/stream-queues/vhost/exchange`: returns all the stream queues for the `exchange` of `vhost`. 
+If you have a stream called `logs_stream`, then by sending a `basic.consume` call with the queue name `logs_stream`, the plugin will
+figure out how to find the right queue from the stream to consume from. In other words, all those queues are transparent for the user.
+The user only needs to publish messages to the `shard.logs_stream` exchange, and consume from a virtual queue called `shard.logs_stream`
+as well.
 
-The last API call accepts the optional parameter `node` which can be any of: 
+### What strategy is used for picking the queue name ###
 
-- `local`: returns the stream queue that is local to the node where the HTTP call is made.
-- `random`: returns a random stream queue from the queues belonging to the `exchange` stream.
-- If the parameter is not present, then it returns all the stream queues for the `exchange` of `vhost`.
+When you issue a `basic.consume`, the plugin will randomly choose a local sharded queue to return from. Of course the local sharded queue
+will be part of the set of queues that belong to the chosen stream.
 
-## Running the examples ##
+## Examples ##
 
-To test the plugin you can run the `examples/shard.php` example.
-
-First install composer as explained [here](http://getcomposer.org/doc/00-intro.md#installation-nix).
-
-Then `cd` into the `examples` folder and run: `composer.phar install`.
-
-Then run `php stream.php`.
-
-That script will:
-
-- Declare a policy for all exchanges named `"^shard\."`
-- Create an exchange called `shard.logs_stream` of type `x-consistent-hash`
-- Retrieve all stream queues on the broker
-- Retrieve all stream queues on the broker for exchange `shard.logs_stream`
-- Retrieve the local stream queue for exchange `shard.logs_stream`
-- Retrieve a random stream queue for exchange `shard.logs_stream`
+Inside the `etc` folder you can find a set of shell scripts where you can see how to set the various policies and parameters supported by the plugin.
 
 ## Plugin Status ##
 
 At the moment the plugin is __experimental__ in order to receive feedback from the community.
 
-## TODO ##
+## bug25817 branch ##
 
-- Adds parameters so the user can define an __amqpuri__ to use when declaring queues.
-- Adds parameters to set the binding key for queues.
+This branch adds the concept of channel interceptors, to RabbitMQ. The idea is that while RabbitMQ is processing AMQP methods like `basic.consume` or
+`queue.delete`, a plugin can intercept the method and modify the queue name.
+
+This is useful in the case of this particular plugin, when the user might issue a `basic.consume('my_stream')`, but `my_stream` is actually a sharded queue.
+The plugin then can inspect the provided queue name, decide if that's a sharded queue, and return a modified name to RabbitMQ with one of the queues 
+managed by the plugin. 
+
+Also a plugin can decide that a certain AMQP method can't be performed on a queue that's managed by the plugin. In this case declared a queue called `my_stream`
+doesn't make much sense when there's actually a sharded queue by that name. In this case the plugin will return a channel error to the user.
+
+The bug25817 branch makes the following methods to be intercepted. Next to them we detail this plugin behaviour.
+
+- `'basic_consume', QueueName`: The plugin will randomly pick a sharded queue from the `QueueName` shard.
+- `'basic_get', QueueName`: The plugin will randomly pick a sharded queue from the `QueueName` shard.
+- `'queue_declare', QueueName`: The plugin forbids declaring queues with the same name of an existing shard, since `basic.consume` behaviour would be undefined.
+- `'queue_bind', QueueName`: since there isn't an actual `QueueName` queue, this method returns a channel error.
+- `'queue_unbind', QueueName`: since there isn't an actual `QueueName` queue, this method returns a channel error.
+- `'queue_purge', QueueName`: since there isn't an actual `QueueName` queue, this method returns a channel error.
+- `'queue_delete', QueueName`: since there isn't an actual `QueueName` queue, this method returns a channel error.
+
+In the future, `queue.delete` and `queue.purge`, could delete the set of shards as a whole, and purge the set of shards as a whole, respectively.
