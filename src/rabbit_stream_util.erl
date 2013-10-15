@@ -46,19 +46,10 @@ shards_per_node(X) ->
     get_parameter_value(<<"stream-definition">>, <<"shards-per-node">>, 
         X, ?DEFAULT_SHARDS_NUM).
 
+%% Move routing key to stream-definition
 routing_key(X) ->
-    case get_parameter_value(<<"stream-definition">>, <<"connection-params">>, X) of
-        undefined ->
-            ?DEFAULT_RK;
-        Name ->
-            case rabbit_runtime_parameters:value(
-                    vhost(X), <<"stream-connection-params">>, Name) of
-                undefined -> 
-                    ?DEFAULT_RK;
-                Value     -> 
-                    pget(<<"routing-key">>, Value, ?DEFAULT_RK)
-            end
-    end.
+    get_parameter_value(<<"stream-definition">>, <<"routing-key">>, 
+        X, ?DEFAULT_RK).
 
 %%----------------------------------------------------------------------------
 
@@ -67,9 +58,6 @@ vhost(#exchange{name = #resource{virtual_host = VHost}}) -> VHost.
 
 get_policy(X) ->
     rabbit_policy:get(<<"stream-definition">>, X).
-
-get_parameter_value(Comp, Param, X) ->
-    get_parameter_value(Comp, Param, X, undefined).
 
 get_parameter_value(Comp, Param, X, Default) ->
     case get_policy(X) of
