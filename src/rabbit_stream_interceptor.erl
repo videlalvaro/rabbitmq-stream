@@ -34,6 +34,9 @@ intercept('queue_declare', _Q1, Q2) ->
 intercept('queue_bind', _Q1, Q2) ->
     {error, rabbit_misc:format("Can't bind sharded queue: ~p", [Q2])};
 
+intercept('queue_unbind', _Q1, Q2) ->
+    {error, rabbit_misc:format("Can't unbind sharded queue: ~p", [Q2])};
+
 intercept(_Other, _Q1, Q2) ->
     {ok, Q2}.
 
