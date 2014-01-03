@@ -58,8 +58,8 @@ notify(VHost, <<"stream">>, <<"routing-key">>, _Term) ->
 notify(_VHost, <<"stream">>, _Name, _Term) ->
     ok;
 
-%% Maybe increase shard number by declaring new queues in case there 
-%% shards-per-node increased.
+%% Maybe increase shard number by declaring new queues 
+%% in case shards-per-node increased.
 %% We can't delete extra queues because the user might have messages on them.
 %% We just ensure that there are SPN number of queues.
 notify(VHost, <<"stream-definition">>, Name, _Term) ->
