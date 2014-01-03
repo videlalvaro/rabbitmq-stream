@@ -5,7 +5,7 @@
 
 -behaviour(rabbit_channel_interceptor).
 
--export([description/0, intercept/3, applies_to/1, priority_param/0]).
+-export([description/0, intercept/1, applies_to/1]).
 
 -import(rabbit_stream_util, [a2b/1]).
 
@@ -19,44 +19,46 @@
 description() ->
     [{description, <<"Stream interceptor for channel methods">>}].
 
-intercept('basic_consume', QName, QName2) ->
-    queue_name(QName, QName2);
+intercept(#'basic.consume'{queue = QName} = Method) ->
+    {ok, QName2} = queue_name(QName),
+    Method#'basic.consume'{queue = QName2};
 
-intercept('basic_get', QName, QName2) ->
-    queue_name(QName, QName2);
+intercept(#'basic.get'{queue = QName} = Method) ->
+    {ok, QName2} = queue_name(QName),
+    Method#'basic.get'{queue = QName2};
 
-intercept('queue_delete', _Q1, Q2) ->
-    {error, rabbit_misc:format("Can't delete sharded queue: ~p", [Q2])};
+intercept(#'queue.delete'{queue = QName}) ->
+    {error, rabbit_misc:format("Can't delete sharded queue: ~p", [QName])};
 
-intercept('queue_declare', _Q1, Q2) ->
-    {error, rabbit_misc:format("Can't declare sharded queue: ~p", [Q2])};
+intercept(#'queue.declare'{queue = QName}) ->
+    {error, rabbit_misc:format("Can't declare sharded queue: ~p", [QName])};
 
-intercept('queue_bind', _Q1, Q2) ->
-    {error, rabbit_misc:format("Can't bind sharded queue: ~p", [Q2])};
+intercept(#'queue.bind'{queue = QName}) ->
+    {error, rabbit_misc:format("Can't bind sharded queue: ~p", [QName])};
 
-intercept('queue_unbind', _Q1, Q2) ->
-    {error, rabbit_misc:format("Can't unbind sharded queue: ~p", [Q2])};
+intercept(#'queue.unbind'{queue = QName}) ->
+    {error, rabbit_misc:format("Can't unbind sharded queue: ~p", [QName])};
 
-intercept('queue_purge', _Q1, Q2) ->
-    {error, rabbit_misc:format("Can't purge sharded queue: ~p", [Q2])};
+intercept(#'queue.purge'{queue = QName}) ->
+    {error, rabbit_misc:format("Can't purge sharded queue: ~p", [QName])}.
 
-intercept(_Other, _Q1, Q2) ->
-    {ok, Q2}.
-
-applies_to('basic_consume') -> true;
+applies_to('basic.consume') -> true;
+applies_to('basic.get') -> true;
+applies_to('queue.delete') -> true;
+applies_to('queue.declare') -> true;
+applies_to('queue.bind') -> true;
+applies_to('queue.unbind') -> true;
+applies_to('queue.purge') -> true;
 applies_to(_Other) -> false.
-
-priority_param() -> <<"stream-method-priority">>.
 
 %%----------------------------------------------------------------------------
 
-queue_name(#resource{name = QBin, virtual_host = VHost}, QName2) ->
+queue_name(QBin) ->
     case mnesia:dirty_read(?STREAM_TABLE, QBin) of
-        []  -> 
-            %% Queue is not part of a shard, return default QName
-            {ok, QName2};
-        [#stream{shards_per_node = N}] -> 
+        []  ->
+            %% Queue is not part of a shard, return unmodified name
+            {ok, QBin};
+        [#stream{shards_per_node = N}] ->
             Rand = crypto:rand_uniform(0, N),
-            QBin2 = rabbit_stream_util:make_queue_name(QBin, a2b(node()), Rand),
-            {ok, rabbit_misc:r(VHost, queue, QBin2)}
+            {ok, rabbit_stream_util:make_queue_name(QBin, a2b(node()), Rand)}
     end.
