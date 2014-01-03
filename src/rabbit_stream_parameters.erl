@@ -29,12 +29,9 @@ validate(_VHost, <<"stream">>, <<"shards-per-node">>, Term) ->
 
 validate(_VHost, <<"stream">>, <<"routing-key">>, Term) ->
     rabbit_parameter_validation:binary(<<"routing-key">>, Term);
-    
+
 validate(_VHost, <<"stream">>, <<"local-username">>, Term) ->
     rabbit_parameter_validation:binary(<<"local-username">>, Term);
-
-validate(_VHost, <<"stream-method-priority">>, Name, Term) ->
-    rabbit_parameter_validation:number(Name, Term);
 
 validate(_VHost, <<"stream-definition">>, Name, Term) ->
     rabbit_parameter_validation:proplist(
